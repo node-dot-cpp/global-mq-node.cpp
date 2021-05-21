@@ -49,9 +49,17 @@ class SubscriberNode : public NodeBase
 	public:
 		ConnNotifier( SubscriberNode* node_ ) : node( node_ ) {}
 		virtual void onConnectionAccepted( uint64_t connID ) {
-		};
+			log::default_log::log( log::LogLevel::fatal, "Connection {} confirmed accepted\n", connID );
+			platform::internal_msg::InternalMsg msg;
+			msg.append( "\"Happy to be accepted\"", 22 );
+			node->connection.postMessage( std::move( msg ) );
+		}
 		virtual void onMessage( uint64_t connID, ParserT& parser ) {
-		};
+			std::string s;
+			parser.readStringFromJson( &s );
+			log::default_log::log( log::LogLevel::fatal, "Connection {}: message received:\n", connID );
+			log::default_log::log( log::LogLevel::fatal, "     {}\n", s );
+		}
 	};
 	ConnNotifier connNotifier;
 

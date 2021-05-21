@@ -53,9 +53,19 @@ class PublisherNode : public NodeBase
 		ConnNotifier( PublisherNode* node_ ) : node( node_ ) {}
 		virtual void onNewConnection( uint64_t connID ) {
 			log::default_log::log( log::LogLevel::fatal, "New connection {} accepted\n", connID );
-		};
+		}
 		virtual void onMessage( uint64_t connID, globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* connection_, ParserT& parser ) {
-		};
+			Connection* connection = dynamic_cast<Connection*>( connection_ );
+			std::string s;
+			parser.readStringFromJson( &s );
+			log::default_log::log( log::LogLevel::fatal, "Connection {}: message received:\n", connID );
+			log::default_log::log( log::LogLevel::fatal, "     {}\n", s );
+
+			// reply once
+			platform::internal_msg::InternalMsg msg;
+			msg.append( "\"Happy to hear about your happiness\"", 36 );
+			connection->postMessage( std::move( msg ) );
+		}
 	};
 	ConnNotifier connNotifier;
 
