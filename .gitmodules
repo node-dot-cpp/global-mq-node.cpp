@@ -1,0 +1,3 @@
+[submodule "global-mq-marshalling"]
+	path = global-mq-marshalling
+	url = https://github.com/node-dot-cpp/global-mq-marshalling
