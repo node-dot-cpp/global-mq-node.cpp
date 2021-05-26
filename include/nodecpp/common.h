@@ -140,9 +140,7 @@ public:
 #include <gmqueue.h>
 globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>* getTransport();
 
-#if (defined NODECPP_ENABLE_CLUSTERING) || (defined NODECPP_USE_Q_BASED_INFRA)
 struct BasicThreadInfo; // forward declaration
-#endif
 
 class RunnableBase
 {
