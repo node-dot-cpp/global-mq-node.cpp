@@ -23,10 +23,11 @@ endif()
 
 add_subdirectory(global-mq-marshalling)
 add_subdirectory(memory-safe-cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/global-mq-marshalling/library/include)
 
 
 add_library(global-mq-nodecpp STATIC
-    src/q_bqsed_infrastructure.cpp
+    src/q_based_infrastructure.cpp
     src/timeout_manager.cpp
     src/common.cpp
     src/fs.cpp
