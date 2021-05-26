@@ -232,14 +232,6 @@ public:
 		{
 			switch( thq->msgType )
 			{
-				case InterThreadMsgType::Infrastructural:
-				{
-					if constexpr ( NodeType::has_infrastructure_message_handler )
-						node.node->onInfrastructuralMessage( thq->msg );
-					else
-						throw std::exception(); // unexpected / unhandled message type
-					break;
-				}
 				case InterThreadMsgType::GlobalMQ:
 				{
 					if constexpr ( NodeType::has_global_mq_message_handler )

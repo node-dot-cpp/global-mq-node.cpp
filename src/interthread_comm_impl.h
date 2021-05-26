@@ -196,7 +196,7 @@ public:
 	}
 };
 
-enum class InterThreadMsgType { UserDefined, ThreadStarted, ThreadTerminate, ServerListening, ConnAccepted, ServerError, ServerCloseRequest, ServerClosedNotification, RequestToListeningThread, Infrastructural, GlobalMQ, Undefined };
+enum class InterThreadMsgType { Undefined, GlobalMQ, UserDefined };
 
 struct InterThreadMsg;
 class InterThreadMsgPtr

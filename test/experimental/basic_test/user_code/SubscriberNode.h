@@ -24,9 +24,6 @@ class SubscriberNode : public NodeBase
 			log::default_log::log( log::LogLevel::fatal, "id = {}\n", id );
 			if ( id == 6 )
 			{
-				nodecpp::platform::internal_msg::InternalMsg msg;
-				msg.append( "INFRASTRUCTURAL", sizeof("INFRASTRUCTURAL") );
-				getTransport()->postInfrastructuralMessage( std::move( msg), PublisherNodeName );
 			}
 		}
 		void notifyUpdated_text() const { log::default_log::log( log::LogLevel::fatal, "text = {}\n", text ); }

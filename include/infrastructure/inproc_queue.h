@@ -51,10 +51,6 @@ public:
 	{
 		msgQueue.push_back( InterThreadMsg( std::move( msg ), InterThreadMsgType::GlobalMQ, recipientID ) );
 	}
-	virtual void postInfrastructuralMessage( ::globalmq::marshalling::MessageBufferT&& msg ) override
-	{
-		msgQueue.push_back( InterThreadMsg( std::move( msg ), InterThreadMsgType::Infrastructural, recipientID ) );
-	}
 };
 
 template<class PlatformSupportT>
