@@ -34,7 +34,7 @@
 
 #include <gmqueue.h>
 #include "marshalling.h"
-#include <clustering_impl/interthread_comm_impl.h>
+#include <interthread_comm_impl.h>
 
 namespace nodecpp {
 

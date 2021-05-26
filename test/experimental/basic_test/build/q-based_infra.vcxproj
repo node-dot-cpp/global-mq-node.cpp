@@ -72,19 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../../../../include/nodecpp;../../../../safe_memory/library/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../safe_memory/library/src/iibmalloc/src;../../../../safe_memory/library/src;../../../../include;../../../../src;$(IncludePath)</IncludePath>
+    <IncludePath>../../../../include/nodecpp;../../../../memory-safe-cpp/library/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../memory-safe-cpp/library/src/iibmalloc/src;../../../../memory-safe-cpp/library/src;../../../../include;../../../../src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../../../../include/nodecpp;../../../../safe_memory/library/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../safe_memory/library/src/iibmalloc/src;../../../../safe_memory/library/src;../../../../global-mq/library/include;../../../../include;../../../../src;$(IncludePath)</IncludePath>
+    <IncludePath>../../../../include/nodecpp;../../../../memory-safe-cpp/library/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../memory-safe-cpp/library/src/iibmalloc/src;../../../../memory-safe-cpp/library/src;../../../../global-mq-marshalling/library/include;../../../../include;../../../../src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../../../../include/nodecpp;../../../../safe_memory/library/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../safe_memory/library/src/iibmalloc/src;../../../../safe_memory/library/src;../../../../include;../../../../src;$(IncludePath)</IncludePath>
+    <IncludePath>../../../../include/nodecpp;../../../../memory-safe-cpp/library/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../memory-safe-cpp/library/src/iibmalloc/src;../../../../memory-safe-cpp/library/src;../../../../include;../../../../src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../../../../include/nodecpp;../../../../safe_memory/library/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/include;../../../../safe_memory/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../safe_memory/library/src/iibmalloc/src;../../../../safe_memory/library/src;../../../../global-mq/library/include;../../../../include;../../../../src;$(IncludePath)</IncludePath>
+    <IncludePath>../../../../include/nodecpp;../../../../memory-safe-cpp/library/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/include;../../../../memory-safe-cpp/library/src/iibmalloc/src/foundation/3rdparty/fmt/include;../../../../memory-safe-cpp/library/src/iibmalloc/src;../../../../memory-safe-cpp/library/src;../../../../global-mq-marshalling/library/include;../../../../include;../../../../src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -163,17 +163,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\3rdparty\fmt\src\format.cc" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\cpu_exceptions_translator.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\log.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\nodecpp_assert.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\page_allocator.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\safe_memory_error.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\stack_info.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\std_error.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\foundation\src\tagged_ptr_impl.cpp" />
-    <ClCompile Include="../../../../safe_memory\library\src\iibmalloc\src\iibmalloc.cpp" />
-    <ClCompile Include="..\..\..\..\safe_memory\library\src\safe_ptr.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\3rdparty\fmt\src\format.cc" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\cpu_exceptions_translator.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\log.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\nodecpp_assert.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\page_allocator.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\stack_info.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\std_error.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\foundation\src\tagged_ptr_impl.cpp" />
+    <ClCompile Include="../../../../memory-safe-cpp\library\src\iibmalloc\src\iibmalloc.cpp" />
+    <ClCompile Include="..\..\..\..\memory-safe-cpp\library\src\iibmalloc\src\foundation\src\safe_memory_error.cpp" />
+    <ClCompile Include="..\..\..\..\memory-safe-cpp\library\src\safe_ptr.cpp" />
     <ClCompile Include="..\..\..\..\src\common.cpp" />
     <ClCompile Include="..\..\..\..\src\fs.cpp" />
     <ClCompile Include="..\..\..\..\src\q_based_infrastructure.cpp" />
@@ -190,17 +190,18 @@
     <ClInclude Include="../../../../include\nodecpp\timers.h" />
     <ClInclude Include="../../../../src\clustering_impl\interthread_comm_impl.h" />
     <ClInclude Include="../../../../src\ev_queue.h" />
-    <ClInclude Include="..\..\..\..\global-mq\library\include\global_mq_common.h" />
-    <ClInclude Include="..\..\..\..\global-mq\library\include\gmqueue.h" />
-    <ClInclude Include="..\..\..\..\global-mq\library\include\marshalling.h" />
-    <ClInclude Include="..\..\..\..\global-mq\library\include\marshalling_impl.h" />
-    <ClInclude Include="..\..\..\..\global-mq\library\include\publishable_impl.h" />
+    <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\global_mq_common.h" />
+    <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\gmqueue.h" />
+    <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\marshalling.h" />
+    <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\marshalling_impl.h" />
+    <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\publishable_impl.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\inproc_queue.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\nodecpp_gmqueue_customized_types.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\q_based_infrastructure.h" />
     <ClInclude Include="..\..\..\..\include\nodecpp\common_structs.h" />
     <ClInclude Include="..\..\..\..\include\nodecpp\fs.h" />
     <ClInclude Include="..\..\..\..\src\timeout_manager.h" />
+    <ClInclude Include="..\user_code\generated\publishable_state.h" />
     <ClInclude Include="..\user_code\PublisherNode.h" />
     <ClInclude Include="..\user_code\SubscriberNode.h" />
   </ItemGroup>

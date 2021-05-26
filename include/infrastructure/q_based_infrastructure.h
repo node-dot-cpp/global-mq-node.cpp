@@ -33,9 +33,7 @@
 #include "../include/nodecpp/common_structs.h"
 #include "../include/nodecpp/nls.h"
 
-//#include "../../src/clustering_impl/clustering_impl.h"
-//#include "../../src/clustering_impl/interthread_comm.h"
-#include "../../src/clustering_impl/interthread_comm_impl.h"
+#include "../../src/interthread_comm_impl.h"
 
 #include "ev_queue.h"
 
