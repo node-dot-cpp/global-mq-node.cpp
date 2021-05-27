@@ -18,12 +18,12 @@ int main( int argc, char *argv_[] )
 	// Init GMGueue
 	using BufferT = GMQueueStatePublisherSubscriberTypeInfo::BufferT;
 	using ComposerT = GMQueueStatePublisherSubscriberTypeInfo::ComposerT;
-	gmqueue.template initStateConcentratorFactory<mtest::StateConcentratorFactory<BufferT, ComposerT>>();
+	gmqueue.template initStateConcentratorFactory<basic_test::StateConcentratorFactory<BufferT, ComposerT>>();
 	gmqueue.setAuthority( "" ); // current process only
 
 	runNodeInAnotherThread<PublisherNode>( PublisherNodeName );
 		
-	auto startupDataAndAddr = QueueBasedNodeLoop<SubscriberNode>::getInitializer(); // TODO: consider implementing q-based Postman (as lib-defined)
+	auto startupDataAndAddr = QueueBasedNodeLoop<SubscriberNode>::getInitializer();
 	using InitializerT = typename QueueBasedNodeLoop<SubscriberNode>::Initializer;
 	InitializerT startupData;
 	startupData = startupDataAndAddr.first;

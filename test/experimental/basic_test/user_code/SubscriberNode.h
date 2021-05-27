@@ -28,7 +28,7 @@ class SubscriberNode : public NodeBase
 		}
 		void notifyUpdated_text() const { log::default_log::log( log::LogLevel::fatal, "text = {}\n", text ); }
 	};
-	mtest::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType> subscribedStateWrapper;
+	basic_test::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType> subscribedStateWrapper;
 
 	log::Log log;
 
@@ -76,7 +76,7 @@ public:
 
 		pc.authority = "";
 		pc.nodeName = "PublisherNode";
-		pc.statePublisherOrConnPeerName = mtest::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType>::stringTypeID;
+		pc.statePublisherOrConnPeerName = basic_test::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType>::stringTypeID;
 		GMQ_COLL string path = globalmq::marshalling::GmqPathHelper::compose( globalmq::marshalling::GmqPathHelper::Type::subscriptionRequest, pc );
 		subscribedStateWrapper.subscribe( path );
 

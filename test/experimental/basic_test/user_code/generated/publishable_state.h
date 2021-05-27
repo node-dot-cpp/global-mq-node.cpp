@@ -1,15 +1,15 @@
-#ifndef _publishable_state_h_e7221716_guard
-#define _publishable_state_h_e7221716_guard
+#ifndef _publishable_state_h_042d6dbe_guard
+#define _publishable_state_h_042d6dbe_guard
 
 #include <marshalling.h>
 #include <publishable_impl.h>
 using namespace globalmq::marshalling;
-namespace mtest {
+namespace basic_test {
 
-#ifdef METASCOPE_mtest_ALREADY_DEFINED
+#ifdef METASCOPE_basic_test_ALREADY_DEFINED
 #error metascope must reside in a single idl file
 #endif
-#define METASCOPE_mtest_ALREADY_DEFINED
+#define METASCOPE_basic_test_ALREADY_DEFINED
 
 // Useful aliases:
 //     (note: since clang apparently too often requires providing template arguments for aliased type ctors we use wrappers instead of type aliasing)
@@ -22,7 +22,7 @@ class GmqParser : public globalmq::marshalling::GmqParser<BufferT> { public: Gmq
 template<class BufferT>
 class JsonComposer : public globalmq::marshalling::JsonComposer<BufferT> { public: JsonComposer( BufferT& buff_ ) : globalmq::marshalling::JsonComposer<BufferT>( buff_ ) {} };
 template<class BufferT>
-class JsonParser : public globalmq::marshalling::JsonParser<BufferT> { public: JsonParser( BufferT& buff_ ) : globalmq::marshalling::JsonParser<BufferT>( buff_ ) {} JsonParser( const JsonParser<BufferT>& other ) : globalmq::marshalling::JsonParser<BufferT>( other ) {} JsonParser& operator = ( const JsonParser<BufferT>& other ) { globalmq::marshalling::JsonParser<BufferT>::operator = ( other ); return *this; } };
+class JsonParser : public globalmq::marshalling::JsonParser<BufferT> { public: /*JsonParser( BufferT& buff_ ) : globalmq::marshalling::JsonParser<BufferT>( buff_ ) {}*/ JsonParser( typename BufferT::ReadIteratorT& iter ) : globalmq::marshalling::JsonParser<BufferT>( iter ) {} JsonParser( const JsonParser<BufferT>& other ) : globalmq::marshalling::JsonParser<BufferT>( other ) {} JsonParser& operator = ( const JsonParser<BufferT>& other ) { globalmq::marshalling::JsonParser<BufferT>::operator = ( other ); return *this; } };
 template<class T>
 class SimpleTypeCollectionWrapper : public globalmq::marshalling::SimpleTypeCollectionWrapper<T> { public: SimpleTypeCollectionWrapper( T& coll ) : globalmq::marshalling::SimpleTypeCollectionWrapper<T>( coll ) {} };
 template<class LambdaSize, class LambdaNext>
@@ -42,9 +42,25 @@ DefaultMessageHandler<LambdaHandler> makeDefaultMessageHandler( LambdaHandler &&
 //
 //  Scopes:
 //
+//  scope_test_exchange
+//  {
+//    cl_request
+//    srv_response
+//  }
+//
 //////////////////////////////////////////////////////////////
 
+using ordinal_Type = NamedParameter<struct ordinal_Struct>;
+using replied_on_Type = NamedParameter<struct replied_on_Struct>;
+using text_from_server_Type = NamedParameter<struct text_from_server_Struct>;
+using text_to_server_Type = NamedParameter<struct text_to_server_Struct>;
+using value_Type = NamedParameter<struct value_Struct>;
 
+constexpr ordinal_Type::TypeConverter ordinal;
+constexpr replied_on_Type::TypeConverter replied_on;
+constexpr text_from_server_Type::TypeConverter text_from_server;
+constexpr text_to_server_Type::TypeConverter text_to_server;
+constexpr value_Type::TypeConverter value;
 
 
 // member name presence checkers
@@ -60,6 +76,232 @@ template<typename StateT, typename MemberT> concept has_update_notifier_call_for
 template<typename T> concept has_void_update_notifier_call_for_text = requires(T t) { { t.notifyUpdated_text() }; };
 template<typename StateT, typename MemberT> concept has_update_notifier_call_for_text = requires { { std::declval<StateT>().notifyUpdated_text(std::declval<MemberT>()) }; };
 
+
+namespace scope_test_exchange {
+
+using cl_request = ::globalmq::marshalling::impl::MessageName<2>;
+using srv_response = ::globalmq::marshalling::impl::MessageName<3>;
+
+template<class ParserT, class ... HandlersT >
+void implHandleMessage( ParserT& parser, HandlersT ... handlers )
+{
+	uint64_t msgID;
+
+	static_assert( ParserT::proto == Proto::JSON, "According to IDL JSON parser is expected" );
+	parser.skipDelimiter('{');
+	std::string key;
+	parser.readKey(&key);
+	if (key != "msgid")
+		throw std::exception(); // bad format
+	parser.readUnsignedIntegerFromJson(&msgID);
+	parser.skipSpacesEtc();
+	if (!parser.isDelimiter(','))
+		throw std::exception(); // bad format
+	parser.skipDelimiter(',');
+	parser.readKey(&key);
+	if (key != "msgbody")
+		throw std::exception(); // bad format
+	JsonParser p( parser );
+
+	switch ( msgID )
+	{
+		case cl_request::id: ::globalmq::marshalling::impl::implHandleMessage<cl_request>( parser, handlers... ); break;
+		case srv_response::id: ::globalmq::marshalling::impl::implHandleMessage<srv_response>( parser, handlers... ); break;
+	}
+
+//	p.skipMessageFromJson();
+//	parser = p;
+
+	if (!parser.isDelimiter('}'))
+		throw std::exception(); // bad format
+	parser.skipDelimiter('}');
+}
+
+template<class BufferT, class ... HandlersT >
+void handleMessage( BufferT& buffer, HandlersT ... handlers )
+{
+	JsonParser parser( buffer );
+	implHandleMessage( parser, handlers... );
+}
+
+template<class ReadIteratorT, class ... HandlersT >
+void handleMessage2( ReadIteratorT& riter, HandlersT ... handlers )
+{
+	JsonParser<typename ReadIteratorT::BufferT> parser( riter );
+	implHandleMessage( parser, handlers... );
+}
+
+template<typename msgID, class BufferT, typename ... Args>
+void composeMessage( BufferT& buffer, Args&& ... args );
+
+//**********************************************************************
+// MESSAGE "cl_request" Targets: JSON (2 parameters)
+// 1. INTEGER ordinal (REQUIRED)
+// 2. CHARACTER_STRING text_to_server (REQUIRED)
+
+//**********************************************************************
+
+template<class ComposerT, typename ... Args>
+void MESSAGE_cl_request_compose(ComposerT& composer, Args&& ... args)
+{
+	static_assert( std::is_base_of<ComposerBase, ComposerT>::value, "Composer must be one of GmqComposer<> or JsonComposer<>" );
+
+	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, ordinal_Type::Name>;
+	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_to_server_Type::Name>;
+
+	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...);
+	constexpr size_t argCount = sizeof ... (Args);
+	if constexpr ( argCount != 0 )
+		ensureUniqueness(args.nameAndTypeID...);
+	static_assert( argCount == matchCount, "unexpected arguments found" );
+
+	static_assert( ComposerT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
+	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
+	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "ordinal", arg_1_type::nameAndTypeID, args...);
+	composer.buff.append( ",\n  ", 4 );
+	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_2_type, true, uint64_t, uint64_t, (uint64_t)(0)>(composer, "text_to_server", arg_2_type::nameAndTypeID, args...);
+	composer.buff.append( "\n}", 2 );
+}
+
+template<class ParserT, typename ... Args>
+void MESSAGE_cl_request_parse(ParserT& p, Args&& ... args)
+{
+	static_assert( std::is_base_of<ParserBase, ParserT>::value, "Parser must be one of GmqParser<> or JsonParser<>" );
+
+	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, ordinal_Type::Name>;
+	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_to_server_Type::Name>;
+
+	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...);
+	constexpr size_t argCount = sizeof ... (Args);
+	if constexpr ( argCount != 0 )
+		ensureUniqueness(args.nameAndTypeID...);
+	static_assert( argCount == matchCount, "unexpected arguments found" );
+
+	static_assert( ParserT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
+	p.skipDelimiter( '{' );
+	for ( ;; )
+	{
+		std::string key;
+		p.readKey( &key );
+		if ( key == "ordinal" )
+			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_1_type, false>(arg_1_type::nameAndTypeID, p, args...);
+		else if ( key == "text_to_server" )
+			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_2_type, false>(arg_2_type::nameAndTypeID, p, args...);
+		p.skipSpacesEtc();
+		if ( p.isDelimiter( ',' ) )
+		{
+			p.skipDelimiter( ',' );
+			continue;
+		}
+		if ( p.isDelimiter( '}' ) )
+		{
+			p.skipDelimiter( '}' );
+			break;
+		}
+		throw std::exception(); // bad format
+	}
+}
+
+//**********************************************************************
+// MESSAGE "srv_response" Targets: JSON (3 parameters)
+// 1. INTEGER replied_on (REQUIRED)
+// 2. INTEGER value (REQUIRED)
+// 3. CHARACTER_STRING text_from_server (REQUIRED)
+
+//**********************************************************************
+
+template<class ComposerT, typename ... Args>
+void MESSAGE_srv_response_compose(ComposerT& composer, Args&& ... args)
+{
+	static_assert( std::is_base_of<ComposerBase, ComposerT>::value, "Composer must be one of GmqComposer<> or JsonComposer<>" );
+
+	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, replied_on_Type::Name>;
+	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, value_Type::Name>;
+	using arg_3_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_from_server_Type::Name>;
+
+	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_3_type::nameAndTypeID, Args::nameAndTypeID...);
+	constexpr size_t argCount = sizeof ... (Args);
+	if constexpr ( argCount != 0 )
+		ensureUniqueness(args.nameAndTypeID...);
+	static_assert( argCount == matchCount, "unexpected arguments found" );
+
+	static_assert( ComposerT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
+	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
+	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "replied_on", arg_1_type::nameAndTypeID, args...);
+	composer.buff.append( ",\n  ", 4 );
+	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_2_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "value", arg_2_type::nameAndTypeID, args...);
+	composer.buff.append( ",\n  ", 4 );
+	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_3_type, true, uint64_t, uint64_t, (uint64_t)(0)>(composer, "text_from_server", arg_3_type::nameAndTypeID, args...);
+	composer.buff.append( "\n}", 2 );
+}
+
+template<class ParserT, typename ... Args>
+void MESSAGE_srv_response_parse(ParserT& p, Args&& ... args)
+{
+	static_assert( std::is_base_of<ParserBase, ParserT>::value, "Parser must be one of GmqParser<> or JsonParser<>" );
+
+	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, replied_on_Type::Name>;
+	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, value_Type::Name>;
+	using arg_3_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_from_server_Type::Name>;
+
+	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...) + 
+		isMatched(arg_3_type::nameAndTypeID, Args::nameAndTypeID...);
+	constexpr size_t argCount = sizeof ... (Args);
+	if constexpr ( argCount != 0 )
+		ensureUniqueness(args.nameAndTypeID...);
+	static_assert( argCount == matchCount, "unexpected arguments found" );
+
+	static_assert( ParserT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
+	p.skipDelimiter( '{' );
+	for ( ;; )
+	{
+		std::string key;
+		p.readKey( &key );
+		if ( key == "replied_on" )
+			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_1_type, false>(arg_1_type::nameAndTypeID, p, args...);
+		else if ( key == "value" )
+			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_2_type, false>(arg_2_type::nameAndTypeID, p, args...);
+		else if ( key == "text_from_server" )
+			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_3_type, false>(arg_3_type::nameAndTypeID, p, args...);
+		p.skipSpacesEtc();
+		if ( p.isDelimiter( ',' ) )
+		{
+			p.skipDelimiter( ',' );
+			continue;
+		}
+		if ( p.isDelimiter( '}' ) )
+		{
+			p.skipDelimiter( '}' );
+			break;
+		}
+		throw std::exception(); // bad format
+	}
+}
+
+template<typename msgID, class BufferT, typename ... Args>
+void composeMessage( BufferT& buffer, Args&& ... args )
+{
+	static_assert( std::is_base_of<::globalmq::marshalling::impl::MessageNameBase, msgID>::value );
+	globalmq::marshalling::JsonComposer composer( buffer );
+	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
+	::globalmq::marshalling::impl::json::composeNamedSignedInteger( composer, "msgid", msgID::id);
+	composer.buff.append( ",\n  ", sizeof(",\n  ") - 1 );
+	::globalmq::marshalling::impl::json::addNamePart( composer, "msgbody" );
+	if constexpr ( msgID::id == cl_request::id )
+		MESSAGE_cl_request_compose( composer, std::forward<Args>( args )... );
+	else if constexpr ( msgID::id == srv_response::id )
+		MESSAGE_srv_response_compose( composer, std::forward<Args>( args )... );
+	else
+		static_assert( std::is_same<::globalmq::marshalling::impl::MessageNameBase, msgID>::value, "unexpected value of msgID" ); // note: should be just static_assert(false,"..."); but it seems that in this case clang asserts yet before looking at constexpr conditions
+	composer.buff.append( "\n}", 2 );
+}
+
+} // namespace scope_test_exchange 
 
 //**********************************************************************
 // PUBLISHABLE publishable_sample (2 parameters)
@@ -409,6 +651,6 @@ public:
 //===============================================================================
 
 
-} // namespace mtest
+} // namespace basic_test
 
-#endif // _publishable_state_h_e7221716_guard
+#endif // _publishable_state_h_042d6dbe_guard

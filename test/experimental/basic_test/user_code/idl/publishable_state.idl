@@ -3,3 +3,17 @@ PUBLISHABLE publishable_sample=11 {
 	INTEGER id;
 	CHARACTER-STRING text;
 };
+
+SCOPE scope_test_exchange PROTO = JSON;
+
+MESSAGE scope_test_exchange:cl_request=2{
+	INTEGER ordinal;
+	CHARACTER-STRING text_to_server;
+};
+
+MESSAGE scope_test_exchange:srv_response=3{
+	INTEGER replied_on;
+	INTEGER value;
+	CHARACTER-STRING text_from_server;
+};
+

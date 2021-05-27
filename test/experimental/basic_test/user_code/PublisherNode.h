@@ -21,7 +21,7 @@ class PublisherNode : public NodeBase
 		std::string text;
 		size_t id = 0;
 	};
-	mtest::publishable_sample_NodecppWrapperForPublisher<PublishedState, PoolType> publishedStateWrapper;
+	basic_test::publishable_sample_NodecppWrapperForPublisher<PublishedState, PoolType> publishedStateWrapper;
 
 	log::Log log;
 
