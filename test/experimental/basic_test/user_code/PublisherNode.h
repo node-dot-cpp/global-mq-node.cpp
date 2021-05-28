@@ -147,15 +147,6 @@ public:
 		// GlobalMQ: at the end of each handler cause pools to post all updates
 		mqPool.postAllUpdates();
 	}
-
-	void onInfrastructuralMessage( platform::internal_msg::InternalMsg& msg )
-	{
-		ctr = 0;
-		// GlobalMQ: at the end of each handler cause pools to post all updates
-		auto riter = msg.getReadIter();
-		log::default_log::log( log::LogLevel::fatal, "   >>> {}\n", riter.directRead( riter.directlyAvailableSize() ) );
-		mqPool.postAllUpdates();
-	}
 };
 
 #endif // PUBLISHER_NODE_H
