@@ -23,16 +23,7 @@ int main( int argc, char *argv_[] )
 
 	runNodeInAnotherThread<PublisherNode>( PublisherNodeName );
 		
-	auto startupDataAndAddr = QueueBasedNodeLoop<SubscriberNode>::getInitializer();
-	using InitializerT = typename QueueBasedNodeLoop<SubscriberNode>::Initializer;
-	InitializerT startupData;
-	startupData = startupDataAndAddr.first;
-	size_t threadIdx = startupDataAndAddr.second;
-	nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
-	startupData.transportData = transport4node.makeTransferrable();
-	QueueBasedNodeLoop<SubscriberNode> r( startupData );
-	r.init();
-	r.run();
+	runNodeInThisThread<SubscriberNode>(); // returns on exit from node loop
 
 	return 0;
 }

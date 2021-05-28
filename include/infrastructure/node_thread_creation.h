@@ -75,8 +75,26 @@ void runNodeInAnotherThread( const char* nodeName = nullptr )
 }
 
 template<class NodeT>
-void runNodeInThisThread( const char* nodeName = nullptr )
+void runNodeInThisThread( const char* nodeName = nullptr ) // NOTE: returns on exit from node loop
 {
+	auto startupDataAndAddr = QueueBasedNodeLoop<SubscriberNode>::getInitializer();
+	using InitializerT = typename QueueBasedNodeLoop<SubscriberNode>::Initializer;
+	InitializerT startupData;
+	startupData = startupDataAndAddr.first;
+	size_t threadIdx = startupDataAndAddr.second;
+	if ( nodeName != nullptr && nodeName != "" )
+	{
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		startupData.transportData = transport4node.makeTransferrable();
+	}
+	else
+	{
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		startupData.transportData = transport4node.makeTransferrable();
+	}
+	QueueBasedNodeLoop<NodeT> r( startupData );
+	r.init();
+	r.run();
 }
 
 } // namespace nodecpp
