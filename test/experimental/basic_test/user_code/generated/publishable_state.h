@@ -1,5 +1,5 @@
-#ifndef _publishable_state_h_042d6dbe_guard
-#define _publishable_state_h_042d6dbe_guard
+#ifndef _publishable_state_h_91f76d69_guard
+#define _publishable_state_h_91f76d69_guard
 
 #include <marshalling.h>
 #include <publishable_impl.h>
@@ -18,7 +18,7 @@ using FileReadBuffer = globalmq::marshalling::FileReadBuffer;
 template<class BufferT>
 class GmqComposer : public globalmq::marshalling::GmqComposer<BufferT> { public: GmqComposer( BufferT& buff_ ) : globalmq::marshalling::GmqComposer<BufferT>( buff_ ) {} };
 template<class BufferT>
-class GmqParser : public globalmq::marshalling::GmqParser<BufferT> { public: GmqParser( BufferT& buff_ ) : globalmq::marshalling::GmqParser<BufferT>( buff_ ) {} GmqParser( const GmqParser<BufferT>& other ) : globalmq::marshalling::GmqParser<BufferT>( other ) {} GmqParser& operator = ( const GmqParser<BufferT>& other ) { globalmq::marshalling::GmqParser<BufferT>::operator = ( other ); return *this; }};
+class GmqParser : public globalmq::marshalling::GmqParser<BufferT> { public: /*GmqParser( BufferT& buff_ ) : globalmq::marshalling::GmqParser<BufferT>( buff_ ) {}*/ GmqParser( typename BufferT::ReadIteratorT& iter ) : globalmq::marshalling::GmqParser<BufferT>( iter ) {} GmqParser( const GmqParser<BufferT>& other ) : globalmq::marshalling::GmqParser<BufferT>( other ) {} GmqParser& operator = ( const GmqParser<BufferT>& other ) { globalmq::marshalling::GmqParser<BufferT>::operator = ( other ); return *this; }};
 template<class BufferT>
 class JsonComposer : public globalmq::marshalling::JsonComposer<BufferT> { public: JsonComposer( BufferT& buff_ ) : globalmq::marshalling::JsonComposer<BufferT>( buff_ ) {} };
 template<class BufferT>
@@ -87,47 +87,29 @@ void implHandleMessage( ParserT& parser, HandlersT ... handlers )
 {
 	uint64_t msgID;
 
-	static_assert( ParserT::proto == Proto::JSON, "According to IDL JSON parser is expected" );
-	parser.skipDelimiter('{');
-	std::string key;
-	parser.readKey(&key);
-	if (key != "msgid")
-		throw std::exception(); // bad format
-	parser.readUnsignedIntegerFromJson(&msgID);
-	parser.skipSpacesEtc();
-	if (!parser.isDelimiter(','))
-		throw std::exception(); // bad format
-	parser.skipDelimiter(',');
-	parser.readKey(&key);
-	if (key != "msgbody")
-		throw std::exception(); // bad format
-	JsonParser p( parser );
-
+	static_assert( ParserT::proto == Proto::GMQ, "According to IDL GMQ parser is expected" );
+	parser.parseUnsignedInteger( &msgID );
 	switch ( msgID )
 	{
 		case cl_request::id: ::globalmq::marshalling::impl::implHandleMessage<cl_request>( parser, handlers... ); break;
 		case srv_response::id: ::globalmq::marshalling::impl::implHandleMessage<srv_response>( parser, handlers... ); break;
+		default: ::globalmq::marshalling::impl::implHandleMessage<::globalmq::marshalling::impl::UnknownMessageName>( parser, handlers... ); break;
 	}
 
-//	p.skipMessageFromJson();
-//	parser = p;
-
-	if (!parser.isDelimiter('}'))
-		throw std::exception(); // bad format
-	parser.skipDelimiter('}');
 }
 
 template<class BufferT, class ... HandlersT >
 void handleMessage( BufferT& buffer, HandlersT ... handlers )
 {
-	JsonParser parser( buffer );
+	auto riter = buffer.getReadIter();
+	GmqParser<BufferT> parser( riter );
 	implHandleMessage( parser, handlers... );
 }
 
 template<class ReadIteratorT, class ... HandlersT >
 void handleMessage2( ReadIteratorT& riter, HandlersT ... handlers )
 {
-	JsonParser<typename ReadIteratorT::BufferT> parser( riter );
+	GmqParser<typename ReadIteratorT::BufferT> parser( riter );
 	implHandleMessage( parser, handlers... );
 }
 
@@ -135,7 +117,7 @@ template<typename msgID, class BufferT, typename ... Args>
 void composeMessage( BufferT& buffer, Args&& ... args );
 
 //**********************************************************************
-// MESSAGE "cl_request" Targets: JSON (2 parameters)
+// MESSAGE "cl_request" Targets: GMQ (2 parameters)
 // 1. INTEGER ordinal (REQUIRED)
 // 2. CHARACTER_STRING text_to_server (REQUIRED)
 
@@ -156,12 +138,9 @@ void MESSAGE_cl_request_compose(ComposerT& composer, Args&& ... args)
 		ensureUniqueness(args.nameAndTypeID...);
 	static_assert( argCount == matchCount, "unexpected arguments found" );
 
-	static_assert( ComposerT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
-	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
-	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "ordinal", arg_1_type::nameAndTypeID, args...);
-	composer.buff.append( ",\n  ", 4 );
-	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_2_type, true, uint64_t, uint64_t, (uint64_t)(0)>(composer, "text_to_server", arg_2_type::nameAndTypeID, args...);
-	composer.buff.append( "\n}", 2 );
+	static_assert( ComposerT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
+	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, arg_1_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_2_type, true, uint64_t, uint64_t, (uint64_t)0>(composer, arg_2_type::nameAndTypeID, args...);
 }
 
 template<class ParserT, typename ... Args>
@@ -179,33 +158,13 @@ void MESSAGE_cl_request_parse(ParserT& p, Args&& ... args)
 		ensureUniqueness(args.nameAndTypeID...);
 	static_assert( argCount == matchCount, "unexpected arguments found" );
 
-	static_assert( ParserT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
-	p.skipDelimiter( '{' );
-	for ( ;; )
-	{
-		std::string key;
-		p.readKey( &key );
-		if ( key == "ordinal" )
-			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_1_type, false>(arg_1_type::nameAndTypeID, p, args...);
-		else if ( key == "text_to_server" )
-			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_2_type, false>(arg_2_type::nameAndTypeID, p, args...);
-		p.skipSpacesEtc();
-		if ( p.isDelimiter( ',' ) )
-		{
-			p.skipDelimiter( ',' );
-			continue;
-		}
-		if ( p.isDelimiter( '}' ) )
-		{
-			p.skipDelimiter( '}' );
-			break;
-		}
-		throw std::exception(); // bad format
-	}
+	static_assert( ParserT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
+	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_1_type, false>(p, arg_1_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_2_type, false>(p, arg_2_type::nameAndTypeID, args...);
 }
 
 //**********************************************************************
-// MESSAGE "srv_response" Targets: JSON (3 parameters)
+// MESSAGE "srv_response" Targets: GMQ (3 parameters)
 // 1. INTEGER replied_on (REQUIRED)
 // 2. INTEGER value (REQUIRED)
 // 3. CHARACTER_STRING text_from_server (REQUIRED)
@@ -229,14 +188,10 @@ void MESSAGE_srv_response_compose(ComposerT& composer, Args&& ... args)
 		ensureUniqueness(args.nameAndTypeID...);
 	static_assert( argCount == matchCount, "unexpected arguments found" );
 
-	static_assert( ComposerT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
-	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
-	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "replied_on", arg_1_type::nameAndTypeID, args...);
-	composer.buff.append( ",\n  ", 4 );
-	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_2_type, true, int64_t, int64_t, (int64_t)(0)>(composer, "value", arg_2_type::nameAndTypeID, args...);
-	composer.buff.append( ",\n  ", 4 );
-	::globalmq::marshalling::impl::json::composeParamToJson<ComposerT, arg_3_type, true, uint64_t, uint64_t, (uint64_t)(0)>(composer, "text_from_server", arg_3_type::nameAndTypeID, args...);
-	composer.buff.append( "\n}", 2 );
+	static_assert( ComposerT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
+	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_1_type, true, int64_t, int64_t, (int64_t)(0)>(composer, arg_1_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_2_type, true, int64_t, int64_t, (int64_t)(0)>(composer, arg_2_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_3_type, true, uint64_t, uint64_t, (uint64_t)0>(composer, arg_3_type::nameAndTypeID, args...);
 }
 
 template<class ParserT, typename ... Args>
@@ -256,49 +211,24 @@ void MESSAGE_srv_response_parse(ParserT& p, Args&& ... args)
 		ensureUniqueness(args.nameAndTypeID...);
 	static_assert( argCount == matchCount, "unexpected arguments found" );
 
-	static_assert( ParserT::proto == Proto::JSON, "this MESSAGE assumes only JSON protocol" );
-	p.skipDelimiter( '{' );
-	for ( ;; )
-	{
-		std::string key;
-		p.readKey( &key );
-		if ( key == "replied_on" )
-			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_1_type, false>(arg_1_type::nameAndTypeID, p, args...);
-		else if ( key == "value" )
-			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_2_type, false>(arg_2_type::nameAndTypeID, p, args...);
-		else if ( key == "text_from_server" )
-			::globalmq::marshalling::impl::json::parseJsonParam<ParserT, arg_3_type, false>(arg_3_type::nameAndTypeID, p, args...);
-		p.skipSpacesEtc();
-		if ( p.isDelimiter( ',' ) )
-		{
-			p.skipDelimiter( ',' );
-			continue;
-		}
-		if ( p.isDelimiter( '}' ) )
-		{
-			p.skipDelimiter( '}' );
-			break;
-		}
-		throw std::exception(); // bad format
-	}
+	static_assert( ParserT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
+	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_1_type, false>(p, arg_1_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_2_type, false>(p, arg_2_type::nameAndTypeID, args...);
+	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_3_type, false>(p, arg_3_type::nameAndTypeID, args...);
 }
 
 template<typename msgID, class BufferT, typename ... Args>
 void composeMessage( BufferT& buffer, Args&& ... args )
 {
 	static_assert( std::is_base_of<::globalmq::marshalling::impl::MessageNameBase, msgID>::value );
-	globalmq::marshalling::JsonComposer composer( buffer );
-	composer.buff.append( "{\n  ", sizeof("{\n  ") - 1 );
-	::globalmq::marshalling::impl::json::composeNamedSignedInteger( composer, "msgid", msgID::id);
-	composer.buff.append( ",\n  ", sizeof(",\n  ") - 1 );
-	::globalmq::marshalling::impl::json::addNamePart( composer, "msgbody" );
+	globalmq::marshalling::GmqComposer composer( buffer );
+	::globalmq::marshalling::impl::composeUnsignedInteger( composer, msgID::id );
 	if constexpr ( msgID::id == cl_request::id )
 		MESSAGE_cl_request_compose( composer, std::forward<Args>( args )... );
 	else if constexpr ( msgID::id == srv_response::id )
 		MESSAGE_srv_response_compose( composer, std::forward<Args>( args )... );
 	else
 		static_assert( std::is_same<::globalmq::marshalling::impl::MessageNameBase, msgID>::value, "unexpected value of msgID" ); // note: should be just static_assert(false,"..."); but it seems that in this case clang asserts yet before looking at constexpr conditions
-	composer.buff.append( "\n}", 2 );
 }
 
 } // namespace scope_test_exchange 
@@ -653,4 +583,4 @@ public:
 
 } // namespace basic_test
 
-#endif // _publishable_state_h_042d6dbe_guard
+#endif // _publishable_state_h_91f76d69_guard

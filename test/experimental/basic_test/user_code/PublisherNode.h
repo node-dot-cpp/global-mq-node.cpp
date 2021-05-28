@@ -38,12 +38,24 @@ class PublisherNode : public NodeBase
 		std::string text_from_server;
 	};
 
-	class Connection: public globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>
+	class ConnectionInSCScope: public globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>
 	{
+		using ReadIteratorT = typename GMQueueStatePublisherSubscriberTypeInfo::BufferT::ReadIteratorT;
 		PublisherNode* node = nullptr;
 	public:
 		int replyCtr = 1000;
-		Connection( PublisherNode* node_ ) : node( node_ ) {}
+		ConnectionInSCScope( PublisherNode* node_ ) : node( node_ ) {}
+		virtual void onMessage( ReadIteratorT& riter ) {
+			ClientRequest request;
+			basic_test::scope_test_exchange::handleMessage2( riter, 
+				basic_test::makeMessageHandler<basic_test::scope_test_exchange::cl_request>([&](auto& parser){ 
+					basic_test::scope_test_exchange::MESSAGE_cl_request_parse( parser, basic_test::ordinal = &(request.ordinal), basic_test::text_to_server = &(request.text) );
+					assert( node != nullptr );
+					node->onClientRequest( connID, request, this );
+				}),
+				basic_test::makeDefaultMessageHandler([&](auto& parser, uint64_t msgID){ fmt::print( "Unhandled message {}\n", msgID ); })
+			);
+		}
 	};
 
 	class ConnFactory : public globalmq::marshalling::ConnectionFactoryBase<GMQueueStatePublisherSubscriberTypeInfo>
@@ -51,27 +63,29 @@ class PublisherNode : public NodeBase
 		PublisherNode* node = nullptr;
 	public:
 		ConnFactory( PublisherNode* node_ ) : node( node_ ) {}
-		virtual globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create()
+		virtual globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create( GMQ_COLL string connType )
 		{
 			assert( node != nullptr );
-			return new Connection( node );
+			if ( connType == "sc" )
+				return new ConnectionInSCScope( node );
+			else
+				throw std::exception(); // unexpected connection type
 		}
 	};
 	ConnFactory connFactory;
 
-	void onClientRequest( uint64_t connID, const ClientRequest& rq, Connection* connection )
+	void onClientRequest( uint64_t connID, const ClientRequest& rq, ConnectionInSCScope* connection )
 	{
 		log::default_log::log( log::LogLevel::fatal, "Client request (connID = {}):\n", connID );
 		log::default_log::log( log::LogLevel::fatal, "     ordinal                : {}\n", rq.ordinal );
-		log::default_log::log( log::LogLevel::fatal, "     text                   : {}\n", rq.text );
+//		log::default_log::log( log::LogLevel::fatal, "     text                   : {}\n", rq.text );
 
 		SrvReply reply;
 		reply.replied_on = rq.ordinal;
 		reply.value = ++(connection->replyCtr);
 		reply.text_from_server = fmt::format( "srv reply {} -> {}", rq.ordinal, reply.value );
 		typename GMQueueStatePublisherSubscriberTypeInfo::BufferT buff;
-		typename GMQueueStatePublisherSubscriberTypeInfo::ComposerT composer( buff );
-		basic_test::scope_test_exchange::composeMessage<basic_test::scope_test_exchange::srv_response>(composer, basic_test::replied_on = reply.replied_on, basic_test::value = reply.value, basic_test::text_from_server = reply.text_from_server );
+		basic_test::scope_test_exchange::composeMessage<basic_test::scope_test_exchange::srv_response>(buff, basic_test::replied_on = reply.replied_on, basic_test::value = reply.value, basic_test::text_from_server = reply.text_from_server );
 		connection->postMessage( std::move( buff ) );
 
 	}
@@ -85,26 +99,8 @@ class PublisherNode : public NodeBase
 		virtual void onNewConnection( uint64_t connID ) {
 			log::default_log::log( log::LogLevel::fatal, "New connection {} accepted\n", connID );
 		};
-		virtual void onMessage( uint64_t connID, globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* connection_, ReadIteratorT& riter ) {
-			Connection* connection = dynamic_cast<Connection*>( connection_ );
-			ClientRequest request;
-			basic_test::scope_test_exchange::handleMessage2( riter, 
-				basic_test::makeMessageHandler<basic_test::scope_test_exchange::cl_request>([&](auto& parser){ 
-					basic_test::scope_test_exchange::MESSAGE_cl_request_parse( parser, basic_test::ordinal = &(request.ordinal), basic_test::text_to_server = &(request.text) );
-					assert( node != nullptr );
-					node->onClientRequest( connID, request, connection );
-				}),
-				basic_test::makeDefaultMessageHandler([&](auto& parser, uint64_t msgID){ fmt::print( "Unhandled message {}\n", msgID ); })
-			);
-			/*std::string s;
-			parser.readStringFromJson( &s );
-			log::default_log::log( log::LogLevel::fatal, "Connection {}: message received:\n", connID );
-			log::default_log::log( log::LogLevel::fatal, "     {}\n", s );
-
-			// reply once
-			platform::internal_msg::InternalMsg msg;
-			msg.append( "\"Happy to hear about your happiness\"", 36 );
-			connection->postMessage( std::move( msg ) );*/
+		virtual void onMessage( globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* connection, ReadIteratorT& riter ) {
+			connection->onMessage( riter );
 		};
 	};
 	ConnNotifier connNotifier;

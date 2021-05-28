@@ -4,7 +4,7 @@ PUBLISHABLE publishable_sample=11 {
 	CHARACTER-STRING text;
 };
 
-SCOPE scope_test_exchange PROTO = JSON;
+SCOPE scope_test_exchange PROTO = GMQ;
 
 MESSAGE scope_test_exchange:cl_request=2{
 	INTEGER ordinal;

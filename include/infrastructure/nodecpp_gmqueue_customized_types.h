@@ -10,6 +10,8 @@ public:
 	using BufferT = nodecpp::platform::internal_msg::InternalMsg;
 	using ParserT = globalmq::marshalling::JsonParser<BufferT>;
 	using ComposerT = globalmq::marshalling::JsonComposer<BufferT>;
+//	using ParserT = globalmq::marshalling::GmqParser<BufferT>;
+//	using ComposerT = globalmq::marshalling::GmqComposer<BufferT>;
 };
 
 

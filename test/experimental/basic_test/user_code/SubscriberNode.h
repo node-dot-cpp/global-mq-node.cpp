@@ -22,9 +22,6 @@ class SubscriberNode : public NodeBase
 		size_t id = 0;
 		void notifyUpdated_id() const { 
 			log::default_log::log( log::LogLevel::fatal, "id = {}\n", id );
-			if ( id == 6 )
-			{
-			}
 		}
 		void notifyUpdated_text() const { log::default_log::log( log::LogLevel::fatal, "text = {}\n", text ); }
 	};
@@ -34,9 +31,21 @@ class SubscriberNode : public NodeBase
 
 	class Connection: public globalmq::marshalling::ClientConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>
 	{
+		using ReadIteratorT = typename GMQueueStatePublisherSubscriberTypeInfo::BufferT::ReadIteratorT;
 		SubscriberNode* node = nullptr;
 	public:
 		Connection( SubscriberNode* node_ ) : node( node_ ) {}
+		virtual void onMessage( ReadIteratorT& riter ) {
+			SrvReply reply;
+			basic_test::scope_test_exchange::handleMessage2( riter, 
+				basic_test::makeMessageHandler<basic_test::scope_test_exchange::srv_response>([&](auto& parser){ 
+					basic_test::scope_test_exchange::MESSAGE_srv_response_parse( parser, basic_test::replied_on = &(reply.replied_on), basic_test::value = &(reply.value), basic_test::text_from_server = &(reply.text_from_server) );
+					assert( node != nullptr );
+					node->onServerReply( getConnID(), reply );
+				}),
+				basic_test::makeDefaultMessageHandler([&](auto& parser, uint64_t msgID){ fmt::print( "Unhandled message {}\n", msgID ); })
+			);
+		}
 	};
 	Connection connection;
 
@@ -63,26 +72,10 @@ class SubscriberNode : public NodeBase
 		ConnNotifier( SubscriberNode* node_ ) : node( node_ ) {}
 		virtual void onConnectionAccepted( uint64_t connID ) {
 			log::default_log::log( log::LogLevel::fatal, "Connection {} confirmed accepted\n", connID );
-			/*platform::internal_msg::InternalMsg msg;
-			msg.append( "\"Happy to be accepted\"", 22 );
-			node->connection.postMessage( std::move( msg ) );*/
 			node->sendRequest();
 		}
-		virtual void onMessage( uint64_t connID, ReadIteratorT& iter ) {
-			/*std::string s;
-			parser.readStringFromJson( &s );
-			log::default_log::log( log::LogLevel::fatal, "Connection {}: message received:\n", connID );
-			log::default_log::log( log::LogLevel::fatal, "     {}\n", s );*/
-			SrvReply reply;
-			basic_test::scope_test_exchange::handleMessage2( iter, 
-				basic_test::makeMessageHandler<basic_test::scope_test_exchange::srv_response>([&](auto& parser){ 
-					basic_test::scope_test_exchange::MESSAGE_srv_response_parse( parser, basic_test::replied_on = &(reply.replied_on), basic_test::value = &(reply.value), basic_test::text_from_server = &(reply.text_from_server) );
-					assert( node != nullptr );
-					node->onServerReply( connID, reply );
-				}),
-				basic_test::makeDefaultMessageHandler([&](auto& parser, uint64_t msgID){ fmt::print( "Unhandled message {}\n", msgID ); })
-			);
-//			node->onServerReply( connID, reply );
+		virtual void onMessage( ConnectionT* connection, ReadIteratorT& riter ) {
+			connection->onMessage( riter );
 		}
 	};
 	ConnNotifier connNotifier;
@@ -112,13 +105,17 @@ public:
 
 		globalmq::marshalling::GmqPathHelper::PathComponents pc;
 
+		pc.type = globalmq::marshalling::PublishableStateMessageHeader::MsgType::subscriptionRequest;
 		pc.authority = "";
 		pc.nodeName = "PublisherNode";
-		pc.statePublisherOrConnPeerName = basic_test::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType>::stringTypeID;
-		GMQ_COLL string path = globalmq::marshalling::GmqPathHelper::compose( globalmq::marshalling::GmqPathHelper::Type::subscriptionRequest, pc );
+		pc.statePublisherOrConnectionType = basic_test::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType>::stringTypeID;
+		GMQ_COLL string path = globalmq::marshalling::GmqPathHelper::compose( pc );
 		subscribedStateWrapper.subscribe( path );
 
 		mqPool.add( &connection );
+		pc.type = globalmq::marshalling::PublishableStateMessageHeader::MsgType::connectionRequest;
+		pc.statePublisherOrConnectionType = "sc";
+		path = globalmq::marshalling::GmqPathHelper::compose( pc );
 		connection.connect( path );
 
 
