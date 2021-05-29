@@ -114,7 +114,7 @@ public:
 
 		mqPool.add( &connection );
 		pc.type = globalmq::marshalling::PublishableStateMessageHeader::MsgType::connectionRequest;
-		pc.statePublisherOrConnectionType = "sc";
+		pc.statePublisherOrConnectionType = "local";
 		path = globalmq::marshalling::GmqPathHelper::compose( pc );
 		connection.connect( path );
 

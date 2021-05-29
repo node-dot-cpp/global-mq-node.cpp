@@ -63,13 +63,9 @@ class PublisherNode : public NodeBase
 		PublisherNode* node = nullptr;
 	public:
 		ConnFactory( PublisherNode* node_ ) : node( node_ ) {}
-		virtual globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create( GMQ_COLL string connType )
+		virtual globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create()
 		{
-			assert( node != nullptr );
-			if ( connType == "sc" )
-				return new ConnectionInSCScope( node );
-			else
-				throw std::exception(); // unexpected connection type
+			return new ConnectionInSCScope( node );
 		}
 	};
 	ConnFactory connFactory;
@@ -131,10 +127,8 @@ public:
 		logging_impl::currentLog = &log;
 
 		mqPool.setTransport( getTransport() );
-		mqPool.setConnectionFactory( &connFactory );
+		mqPool.addSimpleConnectionFactory( &connFactory, "local" );
 		mqPool.setNotifier( &connNotifier );
-
-		// TODO: place some code here, for instance...
 
 		republish();
 
