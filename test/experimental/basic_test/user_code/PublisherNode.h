@@ -45,7 +45,7 @@ class PublisherNode : public NodeBase
 	public:
 		int replyCtr = 1000;
 		ConnectionInSCScope( PublisherNode* node_ ) : node( node_ ) {}
-		virtual void onMessage( ReadIteratorT& riter ) {
+		void onMessage( ReadIteratorT& riter ) override {
 			ClientRequest request;
 			basic_test::scope_test_exchange::handleMessage2( riter, 
 				basic_test::makeMessageHandler<basic_test::scope_test_exchange::cl_request>([&](auto& parser){ 
@@ -63,9 +63,12 @@ class PublisherNode : public NodeBase
 		PublisherNode* node = nullptr;
 	public:
 		ConnFactory( PublisherNode* node_ ) : node( node_ ) {}
-		virtual globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create()
+		globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* create() override
 		{
-			return new ConnectionInSCScope( node );
+			auto conn = new ConnectionInSCScope( node );
+			log::default_log::log( log::LogLevel::fatal, "New connection accepted\n" );
+			// TODO: upon necessity we can notify node about a new connection, etc
+			return conn;
 		}
 	};
 	ConnFactory connFactory;
@@ -86,21 +89,6 @@ class PublisherNode : public NodeBase
 
 	}
 
-	class ConnNotifier : public globalmq::marshalling::ServerNotifierBase<GMQueueStatePublisherSubscriberTypeInfo>
-	{
-		using ParserT = GMQueueStatePublisherSubscriberTypeInfo::ParserT;
-		PublisherNode* node = nullptr;
-	public:
-		ConnNotifier( PublisherNode* node_ ) : node( node_ ) {}
-		virtual void onNewConnection( uint64_t connID ) {
-			log::default_log::log( log::LogLevel::fatal, "New connection {} accepted\n", connID );
-		};
-		virtual void onMessage( globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>* connection, ReadIteratorT& riter ) {
-			connection->onMessage( riter );
-		};
-	};
-	ConnNotifier connNotifier;
-
 	int ctr = 0;
 
 	void republish() // sample code with timeouts
@@ -118,7 +106,7 @@ class PublisherNode : public NodeBase
 
 
 public:
-	PublisherNode() : publishedStateWrapper( mqPool ), connFactory( this ), connNotifier( this ) {}
+	PublisherNode() : publishedStateWrapper( mqPool ), connFactory( this ) {}
 
 	handler_ret_type main()
 	{
@@ -128,7 +116,6 @@ public:
 
 		mqPool.setTransport( getTransport() );
 		mqPool.addSimpleConnectionFactory( &connFactory, "local" );
-		mqPool.setNotifier( &connNotifier );
 
 		republish();
 

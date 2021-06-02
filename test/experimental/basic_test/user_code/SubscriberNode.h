@@ -35,7 +35,11 @@ class SubscriberNode : public NodeBase
 		SubscriberNode* node = nullptr;
 	public:
 		Connection( SubscriberNode* node_ ) : node( node_ ) {}
-		virtual void onMessage( ReadIteratorT& riter ) {
+		void onConnectionAccepted() override {
+			log::default_log::log( log::LogLevel::fatal, "Connection confirmed accepted\n" );
+			node->sendRequest();
+		}
+		void onMessage( ReadIteratorT& riter ) override {
 			SrvReply reply;
 			basic_test::scope_test_exchange::handleMessage2( riter, 
 				basic_test::makeMessageHandler<basic_test::scope_test_exchange::srv_response>([&](auto& parser){ 
@@ -65,21 +69,6 @@ class SubscriberNode : public NodeBase
 		sendRequest();
 	}
 
-	class ConnNotifier : public globalmq::marshalling::ClientNotifierBase<GMQueueStatePublisherSubscriberTypeInfo>
-	{
-		SubscriberNode* node = nullptr;
-	public:
-		ConnNotifier( SubscriberNode* node_ ) : node( node_ ) {}
-		virtual void onConnectionAccepted( uint64_t connID ) {
-			log::default_log::log( log::LogLevel::fatal, "Connection {} confirmed accepted\n", connID );
-			node->sendRequest();
-		}
-		virtual void onMessage( ConnectionT* connection, ReadIteratorT& riter ) {
-			connection->onMessage( riter );
-		}
-	};
-	ConnNotifier connNotifier;
-
 	// data for message exchange
 	uint64_t ordinal = 0;
 	void sendRequest()
@@ -92,7 +81,7 @@ class SubscriberNode : public NodeBase
 	}
 
 public:
-	SubscriberNode() : subscribedStateWrapper( mqPool ), connection( this ), connNotifier( this ) {}
+	SubscriberNode() : subscribedStateWrapper( mqPool ), connection( this )/*, connNotifier( this )*/ {}
 
 	handler_ret_type main()
 	{
@@ -101,7 +90,6 @@ public:
 		logging_impl::currentLog = &log;
 
 		mqPool.setTransport( getTransport() );
-		mqPool.setNotifier( &connNotifier );
 
 		globalmq::marshalling::GmqPathHelper::PathComponents pc;
 
@@ -117,7 +105,6 @@ public:
 		pc.statePublisherOrConnectionType = "local";
 		path = globalmq::marshalling::GmqPathHelper::compose( pc );
 		connection.connect( path );
-
 
 		CO_RETURN;
 	}
