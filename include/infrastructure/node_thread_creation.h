@@ -77,8 +77,8 @@ void runNodeInAnotherThread( const char* nodeName = nullptr )
 template<class NodeT>
 void runNodeInThisThread( const char* nodeName = nullptr ) // NOTE: returns on exit from node loop
 {
-	auto startupDataAndAddr = QueueBasedNodeLoop<SubscriberNode>::getInitializer();
-	using InitializerT = typename QueueBasedNodeLoop<SubscriberNode>::Initializer;
+	auto startupDataAndAddr = QueueBasedNodeLoop<NodeT>::getInitializer();
+	using InitializerT = typename QueueBasedNodeLoop<NodeT>::Initializer;
 	InitializerT startupData;
 	startupData = startupDataAndAddr.first;
 	size_t threadIdx = startupDataAndAddr.second;
