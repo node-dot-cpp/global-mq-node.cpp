@@ -112,7 +112,13 @@ namespace nodecpp {
 
 	void clearTimeout(const Timeout& to)
 	{
-		return timeoutManager->appClearTimeout(to.getId());
+		return timeoutManager->appClearTimeout(to);
+	}
+
+	Timeout::~Timeout()
+	{
+		if ( id != 0 )
+			timeoutManager->appTimeoutDestructor(id);
 	}
 
 	void setInmediate(std::function<void()> cb)
