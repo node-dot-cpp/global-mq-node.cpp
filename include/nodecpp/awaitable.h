@@ -99,7 +99,7 @@ struct promise_type_struct_base {
     auto initial_suspend() {
         return std::experimental::suspend_never{};
     }
-	auto final_suspend() {
+	auto final_suspend() noexcept {
 		if ( hr )
 		{
 			auto tmph = hr;
