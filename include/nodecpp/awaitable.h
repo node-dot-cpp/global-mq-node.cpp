@@ -89,7 +89,7 @@ struct promise_type_struct_base {
 	std::experimental::coroutine_handle<> hr = nullptr;
 	std::exception_ptr e_pending = nullptr;
 
-	promise_type_struct_base() {}
+	promise_type_struct_base() noexcept {}
 	promise_type_struct_base(const promise_type_struct_base &) = delete;
 	promise_type_struct_base &operator = (const promise_type_struct_base &) = delete;
 	promise_type_struct_base(promise_type_struct_base &&) = delete;
@@ -99,7 +99,7 @@ struct promise_type_struct_base {
     auto initial_suspend() {
         return std::experimental::suspend_never{};
     }
-	auto final_suspend() noexcept {
+	auto final_suspend() noexcept { // TODO: revision required around 'noexcept': if used with awaitable, hr is suspended, if not nullptr and handle resuming seems not to be throwing
 		if ( hr )
 		{
 			auto tmph = hr;
@@ -134,7 +134,7 @@ struct promise_type_struct : public promise_type_struct_base {
 
 	awaitable<T>* myRetObject = nullptr;
 
-	promise_type_struct() : promise_type_struct_base() {}
+	promise_type_struct() noexcept : promise_type_struct_base() {}
 	promise_type_struct(const promise_type_struct &) = delete;
 	promise_type_struct &operator = (const promise_type_struct &) = delete;
 	promise_type_struct(promise_type_struct &&) = delete;
@@ -152,7 +152,7 @@ struct promise_type_struct<void> : public promise_type_struct_base {
 
 	awaitable<void>* myRetObject = nullptr;
 
-	promise_type_struct() : promise_type_struct_base() {}
+	promise_type_struct() noexcept : promise_type_struct_base() {}
 	promise_type_struct(const promise_type_struct &) = delete;
 	promise_type_struct &operator = (const promise_type_struct &) = delete;
 	promise_type_struct(promise_type_struct &&) = delete;
