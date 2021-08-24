@@ -13,8 +13,10 @@ public:
 	using ComposerT = globalmq::marshalling::JsonComposer<BufferT>;
 //	using ParserT = globalmq::marshalling::GmqParser<BufferT>;
 //	using ComposerT = globalmq::marshalling::GmqComposer<BufferT>;
+	// template<class T>
+	// using OwningPtrT = ::safememory::owning_ptr<T>;
 	template<class T>
-	using OwningPtrT = ::safememory::owning_ptr<T>;
+	using OwningPtrT = ::std::unique_ptr<T>;
 };
 
 
