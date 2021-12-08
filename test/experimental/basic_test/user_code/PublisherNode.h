@@ -63,9 +63,9 @@ class PublisherNode : public NodeBase
 		PublisherNode* node = nullptr;
 	public:
 		ConnFactory( PublisherNode* node_ ) : node( node_ ) {}
-		safememory::owning_ptr<globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>> create() override
+		GMQueueStatePublisherSubscriberTypeInfo::OwningPtrT<globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>> create() override
 		{
-			auto conn = safememory::make_owning<ConnectionInSCScope>( node );
+			auto conn = GMQueueStatePublisherSubscriberTypeInfo::make_owning<ConnectionInSCScope>( node );
 			log::default_log::log( log::LogLevel::fatal, "New connection accepted\n" );
 			// TODO: upon necessity we can notify node about a new connection, etc
 			return conn;
