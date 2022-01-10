@@ -31,8 +31,6 @@ template<class LambdaCompose>
 class MessageWrapperForComposing : public globalmq::marshalling::MessageWrapperForComposing<LambdaCompose> { public: MessageWrapperForComposing(LambdaCompose &&lcompose) : globalmq::marshalling::MessageWrapperForComposing<LambdaCompose>( std::forward<LambdaCompose>(lcompose) ) {} };
 template<class LambdaSize, class LambdaNext>
 class CollectionWrapperForParsing : public globalmq::marshalling::CollectionWrapperForParsing<LambdaSize, LambdaNext> { public: CollectionWrapperForParsing(LambdaSize &&lsizeHint, LambdaNext &&lnext) : globalmq::marshalling::CollectionWrapperForParsing<LambdaSize, LambdaNext>(std::forward<LambdaSize>(lsizeHint), std::forward<LambdaNext>(lnext)) {} };
-template<class LambdaParse>
-class MessageWrapperForParsing : public globalmq::marshalling::MessageWrapperForParsing<LambdaParse> { public: MessageWrapperForParsing(LambdaParse &&lparse) : globalmq::marshalling::MessageWrapperForParsing<LambdaParse>(std::forward<LambdaParse>(lparse)) {} };
 template<typename msgID_, class LambdaHandler>
 MessageHandler<msgID_, LambdaHandler> makeMessageHandler( LambdaHandler &&lhandler ) { return globalmq::marshalling::makeMessageHandler<msgID_, LambdaHandler>(std::forward<LambdaHandler>(lhandler)); }
 template<class LambdaHandler>
@@ -71,10 +69,46 @@ template<typename T> concept has_text_member = requires { { T::text }; };
 // member update notifier presence checks
 using index_type_for_array_notifiers = size_t&;
 template<typename T> concept has_full_update_notifier_call = requires(T t) { { t.notifyFullyUpdated() }; };
+template<typename T> concept has_void_update_notifier_call_for_currentVariant = requires(T t) { { t.notifyUpdated_currentVariant() }; };
+template<typename StateT, typename MemberT> concept has_update_notifier_call_for_currentVariant = requires { { std::declval<StateT>().notifyUpdated_currentVariant(std::declval<MemberT>()) }; };
 template<typename T> concept has_void_update_notifier_call_for_id = requires(T t) { { t.notifyUpdated_id() }; };
 template<typename StateT, typename MemberT> concept has_update_notifier_call_for_id = requires { { std::declval<StateT>().notifyUpdated_id(std::declval<MemberT>()) }; };
 template<typename T> concept has_void_update_notifier_call_for_text = requires(T t) { { t.notifyUpdated_text() }; };
 template<typename StateT, typename MemberT> concept has_update_notifier_call_for_text = requires { { std::declval<StateT>().notifyUpdated_text(std::declval<MemberT>()) }; };
+
+//===============================================================================
+// C-structures for idl STRUCTs, DISCRIMINATED_UNIONs, MESSAGEs and PUBLISHABLEs
+
+namespace structures {
+
+
+namespace scope_test_exchange {
+struct MESSAGE_cl_request
+{
+	int64_t ordinal;
+	GMQ_COLL string text_to_server;
+};
+} // namespace scope_test_exchange
+
+namespace scope_test_exchange {
+struct MESSAGE_srv_response
+{
+	int64_t replied_on;
+	int64_t value;
+	GMQ_COLL string text_from_server;
+};
+} // namespace scope_test_exchange
+
+struct publishable_sample
+{
+	int64_t id;
+	GMQ_COLL string text;
+};
+
+
+} // namespace structures
+
+//===============================================================================
 
 
 namespace scope_test_exchange {
@@ -89,10 +123,12 @@ void implHandleMessage( ParserT& parser, HandlersT ... handlers )
 
 	static_assert( ParserT::proto == Proto::GMQ, "According to IDL GMQ parser is expected" );
 	parser.parseUnsignedInteger( &msgID );
+	bool ok = false;
+
 	switch ( msgID )
 	{
-		case cl_request::id: ::globalmq::marshalling::impl::implHandleMessage<cl_request>( parser, handlers... ); break;
-		case srv_response::id: ::globalmq::marshalling::impl::implHandleMessage<srv_response>( parser, handlers... ); break;
+		case cl_request::id: ok = ::globalmq::marshalling::impl::implHandleMessage<cl_request>( parser, handlers... ); break;
+		case srv_response::id: ok = ::globalmq::marshalling::impl::implHandleMessage<srv_response>( parser, handlers... ); break;
 		default: ::globalmq::marshalling::impl::implHandleMessage<::globalmq::marshalling::impl::UnknownMessageName>( parser, handlers... ); break;
 	}
 
@@ -118,8 +154,8 @@ void composeMessage( BufferT& buffer, Args&& ... args );
 
 //**********************************************************************
 // MESSAGE "cl_request" Targets: GMQ (2 parameters)
-// 1. INTEGER ordinal (REQUIRED)
-// 2. CHARACTER_STRING text_to_server (REQUIRED)
+//  1. INTEGER ordinal (REQUIRED)
+//  2. CHARACTER_STRING text_to_server (REQUIRED)
 
 //**********************************************************************
 
@@ -143,31 +179,28 @@ void MESSAGE_cl_request_compose(ComposerT& composer, Args&& ... args)
 	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_2_type, true, uint64_t, uint64_t, (uint64_t)0>(composer, arg_2_type::nameAndTypeID, args...);
 }
 
-template<class ParserT, typename ... Args>
-void MESSAGE_cl_request_parse(ParserT& p, Args&& ... args)
+template<class ParserT>
+structures::scope_test_exchange::MESSAGE_cl_request MESSAGE_cl_request_parse(ParserT& parser)
 {
 	static_assert( std::is_base_of<ParserBase, ParserT>::value, "Parser must be one of GmqParser<> or JsonParser<>" );
 
-	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, ordinal_Type::Name>;
-	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_to_server_Type::Name>;
+	using T = structures::scope_test_exchange::MESSAGE_cl_request;
+	T t;
+	::globalmq::marshalling::impl::parseStructBegin( parser );
 
-	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
-		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...);
-	constexpr size_t argCount = sizeof ... (Args);
-	if constexpr ( argCount != 0 )
-		ensureUniqueness(args.nameAndTypeID...);
-	static_assert( argCount == matchCount, "unexpected arguments found" );
+		::globalmq::marshalling::impl::publishableParseInteger<ParserT, decltype(T::ordinal)>( parser, &(t.ordinal), "ordinal" );
 
-	static_assert( ParserT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
-	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_1_type, false>(p, arg_1_type::nameAndTypeID, args...);
-	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_2_type, false>(p, arg_2_type::nameAndTypeID, args...);
+		::globalmq::marshalling::impl::publishableParseString<ParserT, decltype(T::text_to_server)>( parser, &(t.text_to_server), "text_to_server" );
+
+	::globalmq::marshalling::impl::parseStructEnd( parser );
+	return t;
 }
 
 //**********************************************************************
 // MESSAGE "srv_response" Targets: GMQ (3 parameters)
-// 1. INTEGER replied_on (REQUIRED)
-// 2. INTEGER value (REQUIRED)
-// 3. CHARACTER_STRING text_from_server (REQUIRED)
+//  1. INTEGER replied_on (REQUIRED)
+//  2. INTEGER value (REQUIRED)
+//  3. CHARACTER_STRING text_from_server (REQUIRED)
 
 //**********************************************************************
 
@@ -194,27 +227,23 @@ void MESSAGE_srv_response_compose(ComposerT& composer, Args&& ... args)
 	::globalmq::marshalling::impl::gmq::composeParamToGmq<ComposerT, arg_3_type, true, uint64_t, uint64_t, (uint64_t)0>(composer, arg_3_type::nameAndTypeID, args...);
 }
 
-template<class ParserT, typename ... Args>
-void MESSAGE_srv_response_parse(ParserT& p, Args&& ... args)
+template<class ParserT>
+structures::scope_test_exchange::MESSAGE_srv_response MESSAGE_srv_response_parse(ParserT& parser)
 {
 	static_assert( std::is_base_of<ParserBase, ParserT>::value, "Parser must be one of GmqParser<> or JsonParser<>" );
 
-	using arg_1_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, replied_on_Type::Name>;
-	using arg_2_type = NamedParameterWithType<::globalmq::marshalling::impl::SignedIntegralType, value_Type::Name>;
-	using arg_3_type = NamedParameterWithType<::globalmq::marshalling::impl::StringType, text_from_server_Type::Name>;
+	using T = structures::scope_test_exchange::MESSAGE_srv_response;
+	T t;
+	::globalmq::marshalling::impl::parseStructBegin( parser );
 
-	constexpr size_t matchCount = isMatched(arg_1_type::nameAndTypeID, Args::nameAndTypeID...) + 
-		isMatched(arg_2_type::nameAndTypeID, Args::nameAndTypeID...) + 
-		isMatched(arg_3_type::nameAndTypeID, Args::nameAndTypeID...);
-	constexpr size_t argCount = sizeof ... (Args);
-	if constexpr ( argCount != 0 )
-		ensureUniqueness(args.nameAndTypeID...);
-	static_assert( argCount == matchCount, "unexpected arguments found" );
+		::globalmq::marshalling::impl::publishableParseInteger<ParserT, decltype(T::replied_on)>( parser, &(t.replied_on), "replied_on" );
 
-	static_assert( ParserT::proto == Proto::GMQ, "this MESSAGE assumes only GMQ protocol" );
-	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_1_type, false>(p, arg_1_type::nameAndTypeID, args...);
-	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_2_type, false>(p, arg_2_type::nameAndTypeID, args...);
-	::globalmq::marshalling::impl::gmq::parseGmqParam<ParserT, arg_3_type, false>(p, arg_3_type::nameAndTypeID, args...);
+		::globalmq::marshalling::impl::publishableParseInteger<ParserT, decltype(T::value)>( parser, &(t.value), "value" );
+
+		::globalmq::marshalling::impl::publishableParseString<ParserT, decltype(T::text_from_server)>( parser, &(t.text_from_server), "text_from_server" );
+
+	::globalmq::marshalling::impl::parseStructEnd( parser );
+	return t;
 }
 
 template<typename msgID, class BufferT, typename ... Args>
@@ -549,19 +578,6 @@ public:
 	}
 };
 
-//===============================================================================
-// Publishable c-structures
-// Use them as-is or copy and edit member types as necessary
-
-struct publishable_sample
-{
-	int64_t id;
-	GMQ_COLL string text;
-};
-
-
-//===============================================================================
-
 template<class InputBufferT, class ComposerT>
 class StateConcentratorFactory : public ::globalmq::marshalling::StateConcentratorFactoryBase<InputBufferT, ComposerT>
 {
@@ -571,7 +587,7 @@ public:
 		switch( typeID )
 		{
 			case 11:
-				return new publishable_sample_WrapperForConcentrator<publishable_sample, InputBufferT, ComposerT>;
+				return new publishable_sample_WrapperForConcentrator<structures::publishable_sample, InputBufferT, ComposerT>;
 			default:
 				return nullptr;
 		}

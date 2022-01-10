@@ -20,7 +20,7 @@ public:
 
 	template<class T, class... _Types, 	std::enable_if_t<!std::is_array<T>::value, int> = 0>
 	static
-	NODISCARD OwningPtrT<T> make_owning(_Types&&... _Args)
+	OwningPtrT<T> make_owning(_Types&&... _Args)
 	{
 		if constexpr ( std::is_same<::safememory::owning_ptr<T>, OwningPtrT<T>>::value )
 			return ::safememory::make_owning<T, _Types ...>( ::std::forward<_Types>(_Args)... );

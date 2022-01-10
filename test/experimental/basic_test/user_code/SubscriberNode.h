@@ -29,6 +29,8 @@ class SubscriberNode : public NodeBase
 
 	log::Log log;
 
+	using SrvReply = basic_test::structures::scope_test_exchange::MESSAGE_srv_response;
+
 	class Connection: public globalmq::marshalling::ClientConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>
 	{
 		using ReadIteratorT = typename GMQueueStatePublisherSubscriberTypeInfo::BufferT::ReadIteratorT;
@@ -40,10 +42,9 @@ class SubscriberNode : public NodeBase
 			node->sendRequest();
 		}
 		void onMessage( ReadIteratorT& riter ) override {
-			SrvReply reply;
 			basic_test::scope_test_exchange::handleMessage2( riter, 
 				basic_test::makeMessageHandler<basic_test::scope_test_exchange::srv_response>([&](auto& parser){ 
-					basic_test::scope_test_exchange::MESSAGE_srv_response_parse( parser, basic_test::replied_on = &(reply.replied_on), basic_test::value = &(reply.value), basic_test::text_from_server = &(reply.text_from_server) );
+					auto reply = basic_test::scope_test_exchange::MESSAGE_srv_response_parse( parser );
 					assert( node != nullptr );
 					node->onServerReply( getConnID(), reply );
 				}),
@@ -52,13 +53,6 @@ class SubscriberNode : public NodeBase
 		}
 	};
 	Connection connection;
-
-	struct SrvReply
-	{
-		int replied_on;
-		int value;
-		std::string text_from_server;
-	};
 
 	void onServerReply( uint64_t connID, const SrvReply& reply )
 	{
@@ -81,7 +75,7 @@ class SubscriberNode : public NodeBase
 	}
 
 public:
-	SubscriberNode() : subscribedStateWrapper( mqPool ), connection( this )/*, connNotifier( this )*/ {}
+	SubscriberNode() : subscribedStateWrapper( mqPool ), connection( this ) {}
 
 	handler_ret_type main()
 	{

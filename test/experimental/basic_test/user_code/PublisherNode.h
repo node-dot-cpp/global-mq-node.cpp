@@ -25,18 +25,8 @@ class PublisherNode : public NodeBase
 
 	log::Log log;
 
-	struct ClientRequest
-	{
-		int ordinal;
-		std::string text;
-	};
-
-	struct SrvReply
-	{
-		int replied_on;
-		int value;
-		std::string text_from_server;
-	};
+	using ClientRequest = basic_test::structures::scope_test_exchange::MESSAGE_cl_request;
+	using SrvReply = basic_test::structures::scope_test_exchange::MESSAGE_srv_response;
 
 	class ConnectionInSCScope: public globalmq::marshalling::ServerConnectionBase<GMQueueStatePublisherSubscriberTypeInfo>
 	{
@@ -46,10 +36,9 @@ class PublisherNode : public NodeBase
 		int replyCtr = 1000;
 		ConnectionInSCScope( PublisherNode* node_ ) : node( node_ ) {}
 		void onMessage( ReadIteratorT& riter ) override {
-			ClientRequest request;
 			basic_test::scope_test_exchange::handleMessage2( riter, 
 				basic_test::makeMessageHandler<basic_test::scope_test_exchange::cl_request>([&](auto& parser){ 
-					basic_test::scope_test_exchange::MESSAGE_cl_request_parse( parser, basic_test::ordinal = &(request.ordinal), basic_test::text_to_server = &(request.text) );
+					auto request = basic_test::scope_test_exchange::MESSAGE_cl_request_parse( parser );
 					assert( node != nullptr );
 					node->onClientRequest( connID, request, this );
 				}),
