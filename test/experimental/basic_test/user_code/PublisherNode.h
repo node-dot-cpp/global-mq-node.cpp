@@ -7,8 +7,11 @@
 #include <log.h>
 #include <nodecpp/fs.h>
 #include "generated/publishable_state.h"
+#include "html_text_tag_converter.h"
 
 constexpr const char* PublisherNodeName = "PublisherNode";
+
+constexpr const char* dummyHtml = "<html><head><title>Untitled</title></head><body><p>body text</p></body></html>";
 
 using namespace nodecpp;
 
@@ -20,8 +23,10 @@ class PublisherNode : public NodeBase
 	{
 		std::string text;
 		size_t id = 0;
+		basic_test::structures::HtmlTag html;
 	};
 	basic_test::publishable_sample_NodecppWrapperForPublisher<PublishedState, PoolType> publishedStateWrapper;
+
 
 	log::Log log;
 
@@ -84,13 +89,27 @@ class PublisherNode : public NodeBase
 	{
 		publishedStateWrapper.set_id( ++ctr );
 		publishedStateWrapper.set_text( fmt::format( " ---> {}. Hello Node.Cpp!", ctr ) );
+		if ( ctr == 1 )
+			publishedStateWrapper.set_html( htmlstring_to_htmltag(dummyHtml) );
+		else
+		{
+			const auto tag = publishedStateWrapper.get_html();
+			if ( tag.tags.currentVariant() == basic_test::structures::HtmlTextOrTags::text )
+			{
+				publishedStateWrapper.get4set_html().get4set_tags().set_str( fmt::format( "now my number is {}", ctr + 10000 ) );
+			}
+			else
+			{
+				publishedStateWrapper.get4set_html().set_name( fmt::format( "html_{}", ctr + 2000 ) );
+			}
+		}
 
 		// GlobalMQ: at the end of each handler cause pools to post all updates
 		mqPool.postAllUpdates();
 
 		setTimeout( [this]() { 
 			republish();
-		}, 500 );
+		}, 10 );
 	}
 
 

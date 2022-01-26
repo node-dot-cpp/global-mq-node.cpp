@@ -20,10 +20,10 @@ class SubscriberNode : public NodeBase
 	{
 		std::string text;
 		size_t id = 0;
-		void notifyUpdated_id() const { 
-			log::default_log::log( log::LogLevel::fatal, "id = {}\n", id );
-		}
+		basic_test::structures::HtmlTag html;
+		void notifyUpdated_id() const {   log::default_log::log( log::LogLevel::fatal, "id   = {}\n", id ); }
 		void notifyUpdated_text() const { log::default_log::log( log::LogLevel::fatal, "text = {}\n", text ); }
+		void notifyUpdated_html() const { log::default_log::log( log::LogLevel::fatal, "html = {}\n", htmltag_to_htmlstring(html) ); }
 	};
 	basic_test::publishable_sample_NodecppWrapperForSubscriber<SubscriptionState, PoolType> subscribedStateWrapper;
 

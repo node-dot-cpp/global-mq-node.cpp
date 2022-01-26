@@ -12,6 +12,11 @@
 
 int main( int argc, char *argv_[] )
 {
+	/*auto tag = htmlstring_to_htmltag(dummyHtml);
+	auto str = htmltag_to_htmlstring(tag);
+	fmt::print( "{}\n", str );
+	return 0;*/
+
 	for ( int i=0; i<argc; ++i )
 		argv.push_back( argv_[i] );
 
