@@ -46,9 +46,9 @@ using ErrorCodeT = int;
 
 // exported staff
 
-ErrorCodeT prepareThisThreadForCommunication( uintptr_t* h ); // initializes comm means and returns "handle" to transport
+ErrorCodeT getThisThreadCommMeans( uintptr_t* h ); // initializes, if necessary, comm means and returns "handle" to transport
 
-ErrorCodeT releaseThisThreadForCommunicationData( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
+ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
 
 ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize );
 
@@ -81,7 +81,7 @@ ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz );
 *      // ...
 *      init();
 *      // uintptr_t hComm is defined somewhere
-*      prepareThisThreadForCommunication(&hComm);
+*      getThisThreadCommMeans(&hComm);
 *      // ... then inside any suitable kind of message loop:
 *          // size_t requiredBufferSize and bytesCopied are defined somewhere
 *          getNextMessageSize( hComm, requiredBufferSize );

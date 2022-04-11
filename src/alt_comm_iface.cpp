@@ -31,30 +31,36 @@
 
 // [quick and dirty] Staff to support interfaces with languages other than c/cpp (like c#)
 
-ErrorCodeT prepareThisThreadForCommunication( uintptr_t* h )
+static thread_local ThreadCommBasicData* transport = nullptr;
+
+ErrorCodeT getThisThreadCommMeans( uintptr_t* h )
 // NOTE: just initializes comm means and returns "handle" to transport
 // TODO: ensure the call is made once per thread
 {
 	try {
-		BasicThreadInfo data;
-		acquireBasicThreadInfoForNewThread( data );
-		size_t threadIdx = data.slotId;
-		setThisThreadBasicInfo(data);
-		ThreadCommBasicData* transport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		if ( transport == nullptr ) {
+		    BasicThreadInfo data;
+		    acquireBasicThreadInfoForNewThread( data );
+		    size_t threadIdx = data.slotId;
+		    setThisThreadBasicInfo(data);
+		    transport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		}
 		*h = reinterpret_cast<uintptr_t>( transport );
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT releaseThisThreadForCommunicationData( uintptr_t handle ) 
+ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ) 
 // NOTE: complemetary to prepareThisThreadForCommunication() on thread termination
 // TODO: ensure calling on thread termination
 {
 	try {
-		ThreadCommBasicData* transport = reinterpret_cast<ThreadCommBasicData*>( handle );
+		ThreadCommBasicData* transport_ = reinterpret_cast<ThreadCommBasicData*>( handle );
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr ); 
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport == transport_ ); 
 		delete transport;
+		transport = nullptr;
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
