@@ -56,17 +56,6 @@ ErrorCodeT releaseThisThreadForCommunicationData( uintptr_t handle )
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT postMessage( uintptr_t handle, GMQueueStatePublisherSubscriberTypeInfo::BufferT& msg )
-{
-	try {
-		ThreadCommBasicData* transport = reinterpret_cast<ThreadCommBasicData*>( handle );
-		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr ); 
-		transport->postMessage( std::move( msg ) );
-		return 0;
-	}
-	catch (...) { return 1; /*unspecified error*/ }
-}
-
 ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize )
 {
 	try {
@@ -86,3 +75,15 @@ ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* 
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
+ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz )
+{
+	try {
+		GMQueueStatePublisherSubscriberTypeInfo::BufferT msg;
+		msg.append( buff, sz );
+		ThreadCommBasicData* transport = reinterpret_cast<ThreadCommBasicData*>( handle );
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr ); 
+		transport->postMessage( std::move( msg ) );
+		return 0;
+	}
+	catch (...) { return 1; /*unspecified error*/ }
+}

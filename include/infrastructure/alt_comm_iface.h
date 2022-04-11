@@ -50,11 +50,11 @@ uintptr_t prepareThisThreadForCommunication(); // initializes comm means and ret
 
 ErrorCodeT releaseThisThreadForCommunicationData( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
 
-ErrorCodeT postMessage( uintptr_t handle, GMQueueStatePublisherSubscriberTypeInfo::BufferT& msg );
-
 ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize );
 
 ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* bytesCopied ); // returns number of bytes copied to the buff (insufficient buffer is an error)
+
+ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz );
 
 
 #endif // ALT_COMM_IFACE_H
