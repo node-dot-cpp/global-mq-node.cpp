@@ -31,16 +31,20 @@
 
 // [quick and dirty] Staff to support interfaces with languages other than c/cpp (like c#)
 
-uintptr_t prepareThisThreadForCommunication() 
+ErrorCodeT prepareThisThreadForCommunication( uintptr_t* h )
 // NOTE: just initializes comm means and returns "handle" to transport
 // TODO: ensure the call is made once per thread
 {
-	BasicThreadInfo data;
-	acquireBasicThreadInfoForNewThread( data );
-	size_t threadIdx = data.slotId;
-	setThisThreadBasicInfo(data);
-	ThreadCommBasicData* transport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
-	return reinterpret_cast<uintptr_t>( transport );
+	try {
+		BasicThreadInfo data;
+		acquireBasicThreadInfoForNewThread( data );
+		size_t threadIdx = data.slotId;
+		setThisThreadBasicInfo(data);
+		ThreadCommBasicData* transport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		*h = reinterpret_cast<uintptr_t>( transport );
+		return 0;
+	}
+	catch (...) { return 1; /*unspecified error*/ }
 }
 
 ErrorCodeT releaseThisThreadForCommunicationData( uintptr_t handle ) 
