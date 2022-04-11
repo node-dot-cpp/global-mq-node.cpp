@@ -188,7 +188,6 @@
     <ClInclude Include="../../../../include\nodecpp\logging.h" />
     <ClInclude Include="../../../../include\nodecpp\mallocator.h" />
     <ClInclude Include="../../../../include\nodecpp\timers.h" />
-    <ClInclude Include="../../../../src\clustering_impl\interthread_comm_impl.h" />
     <ClInclude Include="../../../../src\ev_queue.h" />
     <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\global_mq_common.h" />
     <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\gmqueue.h" />
@@ -197,9 +196,11 @@
     <ClInclude Include="..\..\..\..\global-mq-marshalling\library\include\publishable_impl.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\inproc_queue.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\nodecpp_gmqueue_customized_types.h" />
+    <ClInclude Include="..\..\..\..\include\infrastructure\node_thread_creation.h" />
     <ClInclude Include="..\..\..\..\include\infrastructure\q_based_infrastructure.h" />
     <ClInclude Include="..\..\..\..\include\nodecpp\common_structs.h" />
     <ClInclude Include="..\..\..\..\include\nodecpp\fs.h" />
+    <ClInclude Include="..\..\..\..\src\interthread_comm_impl.h" />
     <ClInclude Include="..\..\..\..\src\timeout_manager.h" />
     <ClInclude Include="..\user_code\generated\publishable_state.h" />
     <ClInclude Include="..\user_code\PublisherNode.h" />

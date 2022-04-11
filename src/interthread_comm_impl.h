@@ -81,6 +81,15 @@ public:
 		return ret;
 	}
 
+	const T* test_front() {
+		// NOTE: this call is provided primarily for implementing interfaces with languages (like c#) for which operations with unmanaged memory is problematic
+		// NOTE: non-nullptr remains valid until a successfull call to pop_front() is done or the whole queue is destroyed
+		if ( size() > 0 )
+			return tbuffer(tail);
+		else
+			return nullptr;
+	}
+
 private:
 	T* tbuffer(size_t idx) {
 		return reinterpret_cast<T*>(buffer + (idx * sizeof(T)));
@@ -183,6 +192,13 @@ public:
 		waitwr.notify_one();
 
 		return sz2move;
+	}
+
+	const T* test_front() { 
+		// NOTE: this call is provided primarily for implementing interfaces with languages (like c#) for which operations with unmanaged memory is problematic
+		// NOTE: non-nullptr remains valid until a successfull call to pop_front() is done or the whole queue is destroyed
+		std::unique_lock<std::mutex> lock(mx);
+		return coll.test_front();
 	}
 
 	void kill() {
