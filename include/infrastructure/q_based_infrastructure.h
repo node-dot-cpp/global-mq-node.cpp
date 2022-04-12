@@ -96,6 +96,7 @@ auto a_timeout_impl(uint32_t ms) {
 
 template<typename NodeT, typename MessageT> concept has_global_mq_message_handler_call = requires { { std::declval<NodeT>().onGlobalMQMessage(std::declval<MessageT&>()) }; };
 template<typename NodeT, typename MessageT> concept has_infrastructure_message_handler_call = requires { { std::declval<NodeT>().onInfrastructuralMessage(std::declval<MessageT&>()) }; };
+template<typename NodeT> concept has_invariant_checker_call = requires { { std::declval<NodeT>().dbgInvariantChecker() }; };
 
 template<class Node>
 struct InfraNodeWrapper
@@ -104,6 +105,7 @@ struct InfraNodeWrapper
 	using NodeT = Node;
 	static constexpr bool has_global_mq_message_handler = has_global_mq_message_handler_call<NodeT, nodecpp::platform::internal_msg::InternalMsg>;
 	static constexpr bool has_infrastructure_message_handler = has_infrastructure_message_handler_call<NodeT, nodecpp::platform::internal_msg::InternalMsg>;
+	static constexpr bool has_invariant_checker = has_invariant_checker_call<NodeT>;
 	NlsT nls;
 #ifdef NODECPP_USE_IIBMALLOC
 		nodecpp::iibmalloc::ThreadLocalAllocatorT allocManager;
@@ -260,6 +262,9 @@ public:
 #endif
 
 		nodecpp::nodeLocalData = nullptr;
+					
+		if constexpr ( NodeType::has_invariant_checker )
+			node.node->dbgInvariantChecker();
 
 		return timeoutToUse;
 	}

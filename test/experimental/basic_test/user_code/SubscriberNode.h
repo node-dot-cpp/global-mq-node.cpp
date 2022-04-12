@@ -109,6 +109,11 @@ public:
 		// GlobalMQ: at the end of each handler cause pools to post all updates
 		mqPool.postAllUpdates();
 	}
+
+	void dbgInvariantChecker()
+	{
+		log::default_log::log( log::LogLevel::fatal, "    OUT OF HANDLERS\n" );
+	}
 };
 
 #endif // SUBSCRIBER_NODE_H
