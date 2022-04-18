@@ -31,6 +31,7 @@ add_library(global-mq-nodecpp STATIC
     src/timeout_manager.cpp
     src/common.cpp
     src/fs.cpp
+    src/alt_comm_iface.cpp
 )
 
 # target_compile_definitions(global-mq-nodecpp PUBLIC NODECPP_ENABLE_CLUSTERING)

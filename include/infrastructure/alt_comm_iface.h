@@ -33,6 +33,14 @@
 #include "q_based_infrastructure.h"
 #include "inproc_queue.h"
 
+#if defined(NODECPP_MSVC)
+// Visual Studio needs annotating exported functions with this
+#define EXPORT_API extern "C" __declspec(dllexport)
+#elif (defined NODECPP_CLANG) || (defined NODECPP_GCC)
+#define EXPORT_API extern "C"
+#else
+#pragma message( "Unknown compiler. Annotation for exported functions is unknown" )
+#endif
 
 struct ThreadCommBasicData : public nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo>
 {
@@ -46,15 +54,15 @@ using ErrorCodeT = int;
 
 // exported staff
 
-ErrorCodeT getThisThreadCommMeans( uintptr_t* h ); // initializes, if necessary, comm means and returns "handle" to transport
+EXPORT_API ErrorCodeT getThisThreadCommMeans( uintptr_t* h ); // initializes, if necessary, comm means and returns "handle" to transport
 
-ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
+EXPORT_API ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
 
-ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize );
+EXPORT_API ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize );
 
-ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* bytesCopied ); // returns number of bytes copied to the buff (insufficient buffer is an error)
+EXPORT_API ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* bytesCopied ); // returns number of bytes copied to the buff (insufficient buffer is an error)
 
-ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz );
+EXPORT_API ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz );
 
 /* QUICK IMPLEMENTATION NOTES to build a module that can be used from C#, etc
 * 
