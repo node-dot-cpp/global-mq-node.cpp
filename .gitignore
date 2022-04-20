@@ -1,0 +1,10 @@
+/build/
+.vs/
+out/
+/.vscode
+*.vcxproj.user
+*.vcxproj.filters
+Debug/
+Release/
+x64/Debug/
+x64/Release/
