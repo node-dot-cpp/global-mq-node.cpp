@@ -31,6 +31,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <nodecpp/common.h>
 //#include "interthread_comm.h"
 
 
