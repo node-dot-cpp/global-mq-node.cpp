@@ -49,20 +49,20 @@ struct ThreadCommBasicData : public nodecpp::GMQThreadQueueTransport<GMQueueStat
 		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo>( gmq, queue, recipientID ), threadIdx( threadIdx_ ) {}
 };
 
-using ErrorCodeT = int;
+using ErrorCodeT = int32_t;
 
 
 // exported staff
 
-EXPORT_API ErrorCodeT getThisThreadCommMeans( uintptr_t* h ); // initializes, if necessary, comm means and returns "handle" to transport
+EXPORT_API ErrorCodeT getThisThreadCommMeans( void** h ); // initializes, if necessary, comm means and returns "handle" to transport
 
-EXPORT_API ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
+EXPORT_API ErrorCodeT releaseThisThreadForCommMeans( void* handle ); // complemetary to prepareThisThreadForCommunication() on thread termination
 
-EXPORT_API ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize );
+EXPORT_API ErrorCodeT getNextMessageSize( void* handle, int32_t* requiredBufferSize );
 
-EXPORT_API ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* bytesCopied ); // returns number of bytes copied to the buff (insufficient buffer is an error)
+EXPORT_API ErrorCodeT getNextMessage( void* handle, uint8_t* buff, int32_t buffsz, int32_t* bytesCopied ); // returns number of bytes copied to the buff (insufficient buffer is an error)
 
-EXPORT_API ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz );
+EXPORT_API ErrorCodeT postMessage( void* handle, uint8_t* buff, int32_t buffsz );
 
 /* QUICK IMPLEMENTATION NOTES to build a module that can be used from C#, etc
 * 

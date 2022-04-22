@@ -31,68 +31,107 @@
 
 // [quick and dirty] Staff to support interfaces with languages other than c/cpp (like c#)
 
-static thread_local ThreadCommBasicData* transport = nullptr;
+static thread_local ThreadCommBasicData* threadLocalTransport = nullptr;
 
-ErrorCodeT getThisThreadCommMeans( uintptr_t* h )
+EXPORT_API ErrorCodeT getThisThreadCommMeans( void** h )
 // NOTE: just initializes comm means and returns "handle" to transport
 // TODO: ensure the call is made once per thread
 {
+    *h = nullptr;
 	try {
-		if ( transport == nullptr ) {
+		if ( threadLocalTransport == nullptr ) {
 		    BasicThreadInfo data;
 		    acquireBasicThreadInfoForNewThread( data );
 		    size_t threadIdx = data.slotId;
 		    setThisThreadBasicInfo(data);
-		    transport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		    threadLocalTransport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		}
-		*h = reinterpret_cast<uintptr_t>( transport );
+		*h = threadLocalTransport;
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT releaseThisThreadForCommMeans( uintptr_t handle ) 
+EXPORT_API ErrorCodeT releaseThisThreadForCommMeans( void* handle ) 
 // NOTE: complemetary to prepareThisThreadForCommunication() on thread termination
 // TODO: ensure calling on thread termination
 {
 	try {
-		ThreadCommBasicData* transport_ = reinterpret_cast<ThreadCommBasicData*>( handle );
-		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr ); 
-		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport == transport_ ); 
-		delete transport;
-		transport = nullptr;
+		if(handle == 0)
+			return 0; // release on null is no-op
+
+		ThreadCommBasicData* transport = static_cast<ThreadCommBasicData*>( handle );
+		if(transport != threadLocalTransport)
+			return 3;
+
+		delete threadLocalTransport;
+		threadLocalTransport = nullptr;
+
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT getNextMessageSize( uintptr_t handle, size_t* requiredBufferSize )
+EXPORT_API ErrorCodeT getNextMessageSize( void* handle, int32_t* requiredBufferSize )
 {
+	*requiredBufferSize = 0;
 	try {
-		ThreadCommBasicData* transport = reinterpret_cast<ThreadCommBasicData*>( handle );
-		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr );
-		*requiredBufferSize = threadQueues[transport->threadIdx].queue.test_front()->msg.size();
+		if(handle == 0)
+			return 2;
+
+		ThreadCommBasicData* transport = static_cast<ThreadCommBasicData*>( handle );
+		if(transport != threadLocalTransport)
+			return 3;
+
+		auto ptr = threadQueues[transport->threadIdx].queue.test_front();
+		if(ptr)
+			*requiredBufferSize = ptr->msg.size();
+
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT getNextMessage( uintptr_t handle, void* buff, size_t buffsz, size_t* bytesCopied )
+EXPORT_API ErrorCodeT getNextMessage( void* handle, uint8_t* buff, int32_t buffsz, int32_t* bytesCopied )
 {
+	*bytesCopied = 0;
 	try {
+		if(handle == 0)
+			return 2;
+
+		ThreadCommBasicData* transport = static_cast<ThreadCommBasicData*>( handle );
+
+		if(transport != threadLocalTransport)
+			return 3;
+
+		auto msg = threadQueues[transport->threadIdx].queue.pop_front();
+
+		if(!msg.first)
+			return 1; // shouldn't happend
+
+		auto iter = msg.second.msg.getReadIter();
+		*bytesCopied = static_cast<int32_t>(iter.read(buff, buffsz));
+
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
 }
 
-ErrorCodeT postMessage( uintptr_t handle, uint8_t* buff, size_t sz )
+EXPORT_API ErrorCodeT postMessage( void* handle, uint8_t* buff, int32_t buffsz )
 {
 	try {
+		if(handle == 0)
+			return 2;
+
+		ThreadCommBasicData* transport = static_cast<ThreadCommBasicData*>( handle );
+
+		if(transport != threadLocalTransport)
+			return 3;
+
 		GMQueueStatePublisherSubscriberTypeInfo::BufferT msg;
-		msg.append( buff, sz );
-		ThreadCommBasicData* transport = reinterpret_cast<ThreadCommBasicData*>( handle );
-		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, transport != nullptr ); 
+		msg.append( buff, buffsz );
 		transport->postMessage( std::move( msg ) );
+
 		return 0;
 	}
 	catch (...) { return 1; /*unspecified error*/ }
