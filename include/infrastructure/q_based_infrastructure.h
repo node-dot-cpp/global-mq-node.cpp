@@ -215,7 +215,7 @@ public:
 		return immediateEvQueue.empty() ? timeout.infraNextTimeout() : 0;
 	}
 
-	int processMessagesAndOrTimeout( InterThreadMsg* thq )
+	uint64_t processMessagesAndOrTimeout( InterThreadMsg* thq )
 	{
 		nodecpp::nodeLocalData = &(node.nls);
 
@@ -252,7 +252,8 @@ public:
 		bool refed = refedTimeout();
 		uint64_t nextTimeoutAt = nextTimeout();
 		now = infraGetCurrentTime();
-		int timeoutToUse = getPollTimeout(nextTimeoutAt, now);
+//		int timeoutToUse = getPollTimeout(nextTimeoutAt, now);
+		uint64_t timeoutToUse = nextTimeoutAt == TimeOutNever ? TimeOutNever : (nextTimeoutAt < now ? 0 : nextTimeoutAt - now);
 
 		timeoutManager = nullptr;
 		inmediateQueue = nullptr;
@@ -276,7 +277,7 @@ template<class NodeT>
 class QueueBasedInfrastructure : public NodeProcessor<NodeT>
 {
 	bool running = true;
-	int timeoutToUse = 0;
+	uint64_t timeoutToUse = 0;
 public:
 	QueueBasedInfrastructure() : NodeProcessor<NodeT>() {}
 
@@ -291,7 +292,8 @@ public:
 		{
 			static constexpr size_t maxMsgCnt = 8;
 			InterThreadMsg thq[maxMsgCnt];
-			size_t actualFromQueue = popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse );
+			size_t actualFromQueue = 0;
+			actualFromQueue = timeoutToUse == TimeOutNever ? popFrontFromThisThreadQueue( thq, maxMsgCnt ) : popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse / 1000 );
 
 			if ( actualFromQueue )
 				for ( size_t i=0; i<actualFromQueue; ++i )
