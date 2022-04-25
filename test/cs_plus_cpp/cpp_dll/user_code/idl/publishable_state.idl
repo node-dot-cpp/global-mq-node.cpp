@@ -28,7 +28,7 @@ PUBLISHABLE publishable_sample=11 {
 	STRUCT HtmlTag html;
 };
 
-SCOPE scope_test_exchange PROTO = GMQ;
+SCOPE scope_test_exchange PROTO = JSON;
 
 MESSAGE scope_test_exchange:cl_request=2{
 	INTEGER ordinal;
