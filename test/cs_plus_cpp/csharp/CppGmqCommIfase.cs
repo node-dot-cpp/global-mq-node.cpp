@@ -1,4 +1,5 @@
-﻿using System;
+﻿using globalmq.marshalling;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -32,7 +33,9 @@ class RpgEngine
         checkError(ret);
     }
 }
-class GmqTransport : globalmq.marshalling.ITransport
+
+
+class DllTransport : globalmq.marshalling.ITransport
 {
 
     [DllImport("q-based_infra.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -54,7 +57,7 @@ class GmqTransport : globalmq.marshalling.ITransport
 
 	private UIntPtr handle;
 
-	public GmqTransport(UIntPtr handle_) { handle = handle_; }
+	public DllTransport(UIntPtr handle_) { handle = handle_; }
 
     private static void checkError(ErrorCodeT code)
     {
@@ -62,13 +65,13 @@ class GmqTransport : globalmq.marshalling.ITransport
             throw new Exception(String.Format("Error code = '{0}'", code));
     }
 
-	public static GmqTransport getThreadTransport()
+	public static DllTransport getThreadTransport()
 	{
         UIntPtr handle_ = UIntPtr.Zero;
 		ErrorCodeT retCode = getThisThreadCommMeans(out handle_);
         // TODO: error checking/handling: throws in case of retCode != 0
         checkError(retCode);
-		return new GmqTransport(handle_);
+		return new DllTransport(handle_);
 	}
 
 	public virtual void postMessage(globalmq.marshalling.BufferT buff)
@@ -94,6 +97,8 @@ class GmqTransport : globalmq.marshalling.ITransport
         // TODO: error checking/handling: throws in case of retCode != 0
         checkError(retCode);
     }
+
+
 
     /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /*

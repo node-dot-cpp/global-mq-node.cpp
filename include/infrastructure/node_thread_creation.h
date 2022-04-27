@@ -56,7 +56,7 @@ void runNodeInAnotherThread( const char* nodeName = nullptr )
 	InitializerT* startupData = nodecpp::stdalloc<InitializerT>(1);
 	*startupData = startupDataAndAddr.first;
 	size_t threadIdx = startupDataAndAddr.second;
-	if ( nodeName != nullptr && nodeName != "" )
+	if ( nodeName != nullptr && *nodeName != '\0' )
 	{
 		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData->transportData = transport4node.makeTransferrable();
@@ -82,7 +82,7 @@ void runNodeInThisThread( const char* nodeName = nullptr ) // NOTE: returns on e
 	InitializerT startupData;
 	startupData = startupDataAndAddr.first;
 	size_t threadIdx = startupDataAndAddr.second;
-	if ( nodeName != nullptr && nodeName != "" )
+	if ( nodeName != nullptr && *nodeName != '\0' )
 	{
 		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData.transportData = transport4node.makeTransferrable();
