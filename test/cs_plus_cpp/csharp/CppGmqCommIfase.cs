@@ -69,35 +69,56 @@ class DllTransport : globalmq.marshalling.ITransport
 	{
         UIntPtr handle_ = UIntPtr.Zero;
 		ErrorCodeT retCode = getThisThreadCommMeans(out handle_);
-        // TODO: error checking/handling: throws in case of retCode != 0
-        checkError(retCode);
-		return new DllTransport(handle_);
+        checkError(retCode); // throws in case of retCode != 0
+
+        return new DllTransport(handle_);
 	}
 
 	public virtual void postMessage(globalmq.marshalling.BufferT buff)
 	{
         int sz = buff.size();
-        globalmq.marshalling.ReadIteratorT it = buff.getReadIterator();
-        byte[] arr = it.read(sz);
-        ErrorCodeT retCode = postMessage(handle, arr, sz);
-        // TODO: error checking/handling: throws in case of retCode != 0
-        checkError(retCode);
-    }
+        byte[] arr;
+        globalmq.marshalling.SimpleBuffer sb = buff as globalmq.marshalling.SimpleBuffer;
+        if (sb == null)
+            throw new Exception(String.Format("Unsupported buffer type '{0}'", buff.GetType()));
+        
+        arr = sb.getInternalBuffer();
 
+        ErrorCodeT retCode = postMessage(handle, arr, sz);
+        checkError(retCode); // throws in case of retCode != 0
+    }
 	public void getNextMessageSize(out Int32 sz)
 	{
 		ErrorCodeT retCode = getNextMessageSize(handle, out sz);
-        // TODO: error checking/handling: throws in case of retCode != 0
-        checkError(retCode);
+        checkError(retCode); // throws in case of retCode != 0
     }
-
     public void getNextMessage(Byte[] buff, out Int32 bytesCopied)
 	{
 		ErrorCodeT retCode = getNextMessage(handle, buff, buff.Length, out bytesCopied);
-        // TODO: error checking/handling: throws in case of retCode != 0
-        checkError(retCode);
+        checkError(retCode); // throws in case of retCode != 0
     }
+    public globalmq.marshalling.SimpleBuffer tryGetNextMessage()
+    {
+        int size = 0;
+        ErrorCodeT retCode = getNextMessageSize(handle, out size);
 
+        checkError(retCode); // throws in case of retCode != 0
+
+        if (size == 0)
+            return null;
+
+        byte[] arr = new byte[size];
+        int bytesCopied = 0;
+        retCode = getNextMessage(handle, arr, size, out bytesCopied);
+        checkError(retCode); // throws in case of retCode != 0
+
+        Debug.Assert(bytesCopied == size);
+
+        globalmq.marshalling.SimpleBuffer sb = new SimpleBuffer();
+        sb.setInternalBuffer(arr, size);
+
+        return sb;
+    }
 
 
     /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

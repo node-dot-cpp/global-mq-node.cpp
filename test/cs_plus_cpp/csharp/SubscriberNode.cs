@@ -35,15 +35,10 @@ class SubscriberNode : NodeBase
 
 	private SubscriptionState subscribedStateWrapper;
 
-	//log::Log log;
-
-	//using SrvReply = basic_test::structures::scope_test_exchange::MESSAGE_srv_response;
-
 	class Connection: globalmq.marshalling.ClientConnectionBase
 	{
-		//using ReadIteratorT = typename GMQueueStatePublisherSubscriberTypeInfo::BufferT::ReadIteratorT;
 		SubscriberNode node = null;
-	//public:
+
 		public Connection( SubscriberNode node_ ) { this.node = node_; }
 		public override void onConnectionAccepted(){
 			Console.Write( "Connection confirmed accepted\n" );
@@ -97,16 +92,8 @@ class SubscriberNode : NodeBase
 		initTransport(tr);
 	}
 
-	//this.platformSupport = platform;
-	//this.transport = GmqTransport.getThreadTransport();
-	//this.mqPool = new MetaPool();
-
 	public override void init()
 	{ 
-		//mqPool.setPlatform(platform);
-		//mqPool.setTransport(transport);
-
-
 		globalmq.marshalling.GmqPathHelper.PathComponents pc = new globalmq.marshalling.GmqPathHelper.PathComponents();
 		pc.type = globalmq.marshalling.PublishableStateMessageHeader.MsgType.subscriptionRequest;
 		pc.authority = "";
@@ -126,40 +113,21 @@ class SubscriberNode : NodeBase
 		connection.connect(path2);
 	}
 
-	//public void onGlobalMQMessage( BufferT msg )
-	//{
-	//	mqPool.onMessage( msg );
-	//	// GlobalMQ: at the end of each handler cause pools to post all updates
-	//	mqPool.postAllUpdates();
-	//}
-
 	public void checkIncomingMessages()
 	{
-		int size = 0;
-		int bytesCopied = 0;
+		BufferT buff = dllTr.tryGetNextMessage();
 
-		dllTr.getNextMessageSize(out size);
-
-		while (size != 0)
+		while (buff != null)
 		{
-			byte[] arr = new byte[size];
-			dllTr.getNextMessage(arr, out bytesCopied);
-
-			Debug.Assert(bytesCopied == size);
-
-			BufferT buff = Platform.makeBuffer();
-			buff.append(arr);
-
 			onGlobalMQMessage(buff);
-			dllTr.getNextMessageSize(out size);
+			buff = dllTr.tryGetNextMessage();
 		}
-
 	}
 
 
 	public override void dbgInvariantChecker()
 	{
-		Console.Write( "    OUT OF HANDLERS\n" );
+		Console.Write("    dbgInvariantChecker\n");
 	}
 };
 
