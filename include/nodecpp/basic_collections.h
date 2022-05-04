@@ -108,8 +108,8 @@ namespace nodecpp
 		string_literal( const char* str_) : str( str_ ) {}
 		string_literal( const string_literal& other ) : str( other.str ) {}
 		string_literal& operator = ( const string_literal& other ) {str = other.str; return *this;}
-		string_literal( string_literal&& other ) : str( other.str ) {}
-		string_literal& operator = ( string_literal&& other ) {str = other.str; return *this;}
+		string_literal( string_literal&& other ) noexcept : str( other.str ) {}
+		string_literal& operator = ( string_literal&& other ) noexcept {str = other.str; return *this;}
 
 		bool operator == ( const string_literal& other ) const { return strcmp( str, other.str ) == 0; }
 		bool operator != ( const string_literal& other ) const { return strcmp( str, other.str ) != 0; }

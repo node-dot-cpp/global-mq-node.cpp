@@ -138,7 +138,7 @@ namespace nodecpp {
 		record_and_replay_impl::BinaryLog* binaryLog = nullptr;
 #endif // NODECPP_RECORD_AND_REPLAY
 
-	globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>* transport;
+	globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>* transport = nullptr;
 
 #ifdef NODECPP_ENABLE_JS_COMPATIBILITY_LAYER
 		js::JSModuleMap jsModuleMap;

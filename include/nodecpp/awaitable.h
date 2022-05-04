@@ -44,9 +44,9 @@ class placeholder_for_void_ret_type
 public:
 	placeholder_for_void_ret_type() {}
 	placeholder_for_void_ret_type(const placeholder_for_void_ret_type&) {}
-	placeholder_for_void_ret_type(placeholder_for_void_ret_type&&) {}
+	placeholder_for_void_ret_type(placeholder_for_void_ret_type&&) noexcept {}
 	placeholder_for_void_ret_type operator = (const placeholder_for_void_ret_type&) {return *this;}
-	placeholder_for_void_ret_type operator = (placeholder_for_void_ret_type&&) {return *this;}
+	placeholder_for_void_ret_type operator = (placeholder_for_void_ret_type&&) noexcept {return *this;}
 };
 
 template<class T>

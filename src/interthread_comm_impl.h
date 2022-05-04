@@ -43,7 +43,7 @@ class CircularBuffer {
 	static constexpr size_t mask = maxsz;
 	size_t head = 0;
 	size_t tail = 0;
-	alignas(T) uint8_t buffer[bufsz * sizeof(T)];
+	alignas(T) uint8_t buffer[bufsz * sizeof(T)] = {0};
 	//Having buffer as T[bufsz] is possible 
 	//  IF we'll replace placement move constructors with move assignments
 	//  AND drop explicit destructor calls
@@ -229,7 +229,7 @@ public:
 struct InterThreadMsg
 {
 	static constexpr uint64_t invalidRecipientID = (uint64_t)(-1);
-	uint32_t recipientID = invalidRecipientID;
+	uint64_t recipientID = invalidRecipientID;
 	InterThreadMsgType msgType = InterThreadMsgType::Undefined;
 	nodecpp::platform::internal_msg::InternalMsg msg;
 
