@@ -1,0 +1,43 @@
+// html tag sample idl
+
+STRUCT Property {
+  CHARACTER-STRING name;
+  CHARACTER-STRING value;
+};
+
+STRUCT HtmlTag {
+	CHARACTER-STRING name;
+	VECTOR<STRUCT Property> properties;
+	DISCRIMINATED_UNION HtmlTextOrTags tags;
+};
+
+DISCRIMINATED_UNION HtmlTextOrTags {
+	CASE text=21: { 
+		CHARACTER-STRING str;
+	}
+	CASE taglists=22: { 
+		VECTOR<STRUCT HtmlTag> tags;
+	}
+};
+
+////////////////
+
+PUBLISHABLE publishable_sample=11 {
+	INTEGER id;
+	CHARACTER-STRING text;
+	STRUCT HtmlTag html;
+};
+
+SCOPE scope_test_exchange PROTO = GMQ;
+
+MESSAGE scope_test_exchange:cl_request=2{
+	INTEGER ordinal;
+	CHARACTER-STRING text_to_server;
+};
+
+MESSAGE scope_test_exchange:srv_response=3{
+	INTEGER replied_on;
+	INTEGER value;
+	CHARACTER-STRING text_from_server;
+};
+
