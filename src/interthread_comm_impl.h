@@ -158,13 +158,19 @@ public:
 		return std::pair<bool, T>(true, std::move(ret));
 	}
 
-	size_t pop_front( T* messages, size_t count ) {
+	std::pair<bool, size_t> pop_front( T* messages, size_t count ) {
 		std::unique_lock<std::mutex> lock(mx);
 		while (coll.size() == 0 && !killflag) {
 			waitrd.wait(lock);
 		}
 		if (killflag)
-			return 0;
+		{
+			size_t sz2move = count <= coll.size() ? count : coll.size();
+			for ( size_t i=0; i<sz2move; ++i )
+				messages[i] = std::move(coll.pop_front());
+			return std::pair<bool, size_t>(false, sz2move);
+			//unlocking mx
+		}
 
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, coll.size() > 0);
 		size_t sz2move = count <= coll.size() ? count : coll.size();
@@ -173,17 +179,23 @@ public:
 		lock.unlock();
 		waitwr.notify_one();
 
-		return sz2move;
+		return std::pair<bool, size_t>(true, sz2move);
 	}
 
-	size_t pop_front( T* messages, size_t count, uint64_t timeout ) {
+	std::pair<bool, size_t> pop_front( T* messages, size_t count, uint64_t timeout ) {
 		std::unique_lock<std::mutex> lock(mx);
 		bool expired = false;
 		while (coll.size() == 0 && !expired && !killflag) {
 			expired = waitrd.wait_for(lock, std::chrono::milliseconds(timeout)) == std::cv_status::timeout;
 		}
 		if (killflag)
-			return 0;
+		{
+			size_t sz2move = count <= coll.size() ? count : coll.size();
+			for ( size_t i=0; i<sz2move; ++i )
+				messages[i] = std::move(coll.pop_front());
+			return std::pair<bool, size_t>(false, sz2move);
+			//unlocking mx
+		}
 
 //		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, coll.size() > 0);
 		size_t sz2move = count <= coll.size() ? count : coll.size();
@@ -192,7 +204,7 @@ public:
 		lock.unlock();
 		waitwr.notify_one();
 
-		return sz2move;
+		return std::pair<bool, size_t>(true, sz2move);
 	}
 
 	const T* test_front() { 
@@ -210,6 +222,16 @@ public:
 
 		waitrd.notify_all();
 		waitwr.notify_all();
+	}
+
+	bool setReadyForReuse() {
+		{//creating scope for lock
+			std::unique_lock<std::mutex> lock(mx);
+			if ( coll.size() )
+				return false;
+			killflag = false;
+			return true;
+		}//unlocking mx
 	}
 };
 
@@ -286,11 +308,14 @@ public:
 		std::unique_lock<std::mutex> lock(mx);
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, status == Status::running, "indeed: {}", status ); 
 		status = Status::terminating;
+		queue.kill();
 	}
-	void setUnused() {
+	bool setUnused() {
 		std::unique_lock<std::mutex> lock(mx);
+		if ( !queue.setReadyForReuse() )
+			return false;
 		status = Status::unused;
-		// TODO: what should we do with non-empty queue (or why is it empty)?
+		return true;
 	}
 	std::pair<bool, uint64_t> acquireForReuse() {
 		std::unique_lock<std::mutex> lock(mx);
@@ -321,8 +346,8 @@ struct BasicThreadInfo
 };
 
 void setThisThreadBasicInfo(BasicThreadInfo& startupData);
-size_t popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count );
-size_t popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout );
+std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count );
+std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout );
 
 
 #endif // INTERTHREAD_COMM_IMPL_H

@@ -160,12 +160,12 @@ void setThisThreadBasicInfo(BasicThreadInfo& startupData) { thisThreadDescriptor
 
 //thread_local NodeBase* thisThreadNode = nullptr;
 
-size_t popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
+std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
 {
 	return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count );
 }
 
-size_t popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout )
+std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout )
 {
 	return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count, timeout );
 }
