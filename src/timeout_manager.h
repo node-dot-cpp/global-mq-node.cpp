@@ -58,10 +58,10 @@ struct TimeoutEntryHandlerData
 
 struct TimeoutEntry : public TimeoutEntryHandlerData
 {
-	uint64_t id;
-	uint64_t lastSchedule;
-	uint64_t delay;
-	uint64_t nextTimeout;
+	uint64_t id = 0;
+	uint64_t lastSchedule = 0;
+	uint64_t delay = 0;
+	uint64_t nextTimeout = 0;
 	bool handleDestroyed = false;
 	bool active = false;
 };
@@ -94,7 +94,7 @@ class TimeoutManager
 			entry.cb = nullptr;
 			entry.h = h;
 		}
-		entry.delay = ms * 1000;
+		entry.delay = ms * 1000ULL;
 
 		auto res = timers.insert(std::make_pair(id, std::move(entry)));
 		if (res.second)

@@ -61,7 +61,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <ExceptionHandling>Async</ExceptionHandling>
-      <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/await /analyze %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -81,7 +81,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <ExceptionHandling>Async</ExceptionHandling>
-      <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/await /analyze %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

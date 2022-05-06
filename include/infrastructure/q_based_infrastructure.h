@@ -199,7 +199,7 @@ public:
 	}
 
 public:
-	bool running = true;
+//	bool running = true;
 	uint64_t nextTimeoutAt = 0;
 	TimeoutManager& getTimeout() { return timeout; }
 	EvQueue& getInmediateQueue() { return immediateEvQueue; }
@@ -276,7 +276,7 @@ public:
 template<class NodeT>
 class QueueBasedInfrastructure : public NodeProcessor<NodeT>
 {
-	bool running = true;
+//	bool running = true;
 	uint64_t timeoutToUse = 0;
 public:
 	QueueBasedInfrastructure() : NodeProcessor<NodeT>() {}
@@ -288,22 +288,36 @@ public:
 
 	void run()
 	{
-		while (running) // TODO: exit condition
+		static constexpr size_t maxMsgCnt = 8;
+		for (;;) // TODO: exit condition except kill flag at queue
 		{
-			static constexpr size_t maxMsgCnt = 8;
 			InterThreadMsg thq[maxMsgCnt];
-			size_t actualFromQueue = 0;
-			actualFromQueue = timeoutToUse == TimeOutNever ? popFrontFromThisThreadQueue( thq, maxMsgCnt ) : popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse / 1000 );
+			auto actualFromQueue = timeoutToUse == TimeOutNever ? popFrontFromThisThreadQueue( thq, maxMsgCnt ) : popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse / 1000 );
 
-			if ( actualFromQueue )
-				for ( size_t i=0; i<actualFromQueue; ++i )
-				{
-					NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, thq[i].recipientID == 0 ); // current version limitation: just a single node per thread
-					timeoutToUse = NodeProcessor<NodeT>::processMessagesAndOrTimeout( thq + i );
-				}
+			if ( actualFromQueue.first )
+			{
+				if ( actualFromQueue.second )
+					for ( size_t i=0; i<actualFromQueue.second; ++i )
+					{
+						NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, thq[i].recipientID == 0 ); // current version limitation: just a single node per thread
+						timeoutToUse = NodeProcessor<NodeT>::processMessagesAndOrTimeout( thq + i );
+					}
+				else
+					timeoutToUse = NodeProcessor<NodeT>::processMessagesAndOrTimeout( nullptr );
+			}
 			else
-				timeoutToUse = NodeProcessor<NodeT>::processMessagesAndOrTimeout( nullptr );
+				break; // dtors of messages already at thq will be called here
 		}
+
+		// pump out remaining messages
+		std::pair<bool, size_t> fromQ;
+		do
+		{
+			InterThreadMsg thq[maxMsgCnt];
+			fromQ = popFrontFromThisThreadQueue( thq, maxMsgCnt, 0 );
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, !fromQ.first ); // in current version it is the only exit condition and that's why we're here
+		}
+		while ( fromQ.second != 0 );
 	}
 };
 

@@ -43,8 +43,8 @@ namespace nodecpp
 		Timeout(const Timeout&) = delete;
 		Timeout& operator=(const Timeout&) = delete;
 
-		Timeout(Timeout&& other) :id(other.id) { other.id = 0; }
-		Timeout& operator=(Timeout&& other) { this->id = other.id; other.id = 0; return *this; };
+		Timeout(Timeout&& other) noexcept :id(other.id) { other.id = 0; }
+		Timeout& operator=(Timeout&& other) noexcept { this->id = other.id; other.id = 0; return *this; };
 
 		~Timeout();
 
