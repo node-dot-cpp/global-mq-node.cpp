@@ -126,6 +126,7 @@ namespace nodecpp {
 		inmediateQueue->add(std::move(cb));
 	}
 
+#if 0
 	namespace time
 	{
 		size_t now()
@@ -144,8 +145,8 @@ namespace nodecpp {
 #error not implemented for this compiler
 #endif
 		}
-
 	} // namespace time
+#endif // 0
 
 } // namespace nodecpp
 
