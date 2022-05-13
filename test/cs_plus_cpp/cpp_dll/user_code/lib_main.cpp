@@ -10,7 +10,7 @@
 #include <infrastructure/node_thread_creation.h>
 #include <infrastructure/alt_comm_iface.h>
 
-EXPORT_API ErrorCodeT initEngine ()
+EXPORT_API ErrorCodeT initEngine()
 {
     try {
         auto isInit = gmqueue.isStateConcentratorFactoryInitialized();
@@ -33,3 +33,44 @@ EXPORT_API ErrorCodeT initEngine ()
     }
     catch (...) { return 1; /*unspecified error*/ }
 }
+
+EXPORT_API ErrorCodeT deinitEngine()
+{
+    try {
+		gmqueue.~GMQueue();
+		new (&gmqueue) decltype(gmqueue)();
+        return 0;
+    }
+    catch (...) { return 1; /*unspecified error*/ }
+}
+
+#if defined(NODECPP_MSVC)
+#include <Windows.h>
+BOOL WINAPI DllMain(
+    HINSTANCE hinstDLL,  // handle to DLL module
+    DWORD fdwReason,     // reason for calling function
+    LPVOID lpReserved )  // reserved
+{
+    // Perform actions based on the reason for calling.
+    switch( fdwReason ) 
+    { 
+        case DLL_PROCESS_ATTACH:
+        case DLL_THREAD_ATTACH:
+        case DLL_THREAD_DETACH:
+            break;
+
+        case DLL_PROCESS_DETACH:
+            deinitEngine();
+            break;
+    }
+    return TRUE;  // Successful DLL_PROCESS_ATTACH.
+}
+#elif ((defined NODECPP_CLANG) || (defined NODECPP_GCC)) && (defined NODECPP_MAC) 
+__attribute__((destructor))
+
+static void finalizer(void) {
+    deinitEngine();
+}
+#else
+#error Unsupported configuration
+#endif

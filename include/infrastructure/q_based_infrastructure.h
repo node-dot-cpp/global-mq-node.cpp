@@ -322,6 +322,8 @@ public:
 };
 
 void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData );
+MsgQueue& getThreadQueue( size_t slotId );
+void runThreadTerminationCleanupRoutines();
 
 template<class NodeT>
 class NodeLoopBase
