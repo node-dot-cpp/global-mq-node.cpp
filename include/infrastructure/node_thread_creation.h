@@ -32,8 +32,6 @@
 #include "q_based_infrastructure.h"
 #include "inproc_queue.h"
 
-extern InterThreadCommData threadQueues[MAX_THREADS];
-
 namespace nodecpp {
 
 template<class NodeT, class ThreadStartupDataT>
@@ -58,12 +56,12 @@ void runNodeInAnotherThread( const char* nodeName = nullptr )
 	size_t threadIdx = startupDataAndAddr.second;
 	if ( nodeName != nullptr && *nodeName != '\0' )
 	{
-		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, getThreadQueue(threadIdx), 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData->transportData = transport4node.makeTransferrable();
 	}
 	else
 	{
-		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, getThreadQueue(threadIdx), 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData->transportData = transport4node.makeTransferrable();
 	}
 	nodecpp::log::default_log::info( nodecpp::log::ModuleID(nodecpp::nodecpp_module_id),"about to start Listener thread with threadID = {}...", threadIdx );
@@ -84,12 +82,12 @@ void runNodeInThisThread( const char* nodeName = nullptr ) // NOTE: returns on e
 	size_t threadIdx = startupDataAndAddr.second;
 	if ( nodeName != nullptr && *nodeName != '\0' )
 	{
-		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, nodeName, getThreadQueue(threadIdx), 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData.transportData = transport4node.makeTransferrable();
 	}
 	else
 	{
-		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		nodecpp::GMQThreadQueueTransport<GMQueueStatePublisherSubscriberTypeInfo> transport4node( gmqueue, getThreadQueue(threadIdx), 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		startupData.transportData = transport4node.makeTransferrable();
 	}
 	QueueBasedNodeLoop<NodeT> r( startupData );

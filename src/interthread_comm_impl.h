@@ -281,7 +281,7 @@ struct InterThreadMsg
 
 using MsgQueue = MWSRFixedSizeQueueWithFlowControl<CircularBuffer<InterThreadMsg, 4>>; // TODO: revise the second param value
 
-class InterThreadCommData
+class ThreadCommData
 {
 private:
 	std::mutex mx;
@@ -293,11 +293,11 @@ public:
 	MsgQueue queue;
 
 public:
-	InterThreadCommData() {}
-	InterThreadCommData( const InterThreadCommData& ) = delete;
-	InterThreadCommData& operator = ( const InterThreadCommData& ) = delete;
-	InterThreadCommData( InterThreadCommData&& ) = delete;
-	InterThreadCommData& operator = ( InterThreadCommData&& ) = delete;
+	ThreadCommData() {}
+	ThreadCommData( const ThreadCommData& ) = delete;
+	ThreadCommData& operator = ( const ThreadCommData& ) = delete;
+	ThreadCommData( ThreadCommData&& ) = delete;
+	ThreadCommData& operator = ( ThreadCommData&& ) = delete;
 
 
 	std::pair<bool, uint64_t> getReincarnation() {

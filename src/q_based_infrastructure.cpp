@@ -126,6 +126,7 @@ namespace nodecpp {
 		inmediateQueue->add(std::move(cb));
 	}
 
+#if 0
 	namespace time
 	{
 		size_t now()
@@ -144,30 +145,96 @@ namespace nodecpp {
 #error not implemented for this compiler
 #endif
 		}
-
 	} // namespace time
+#endif // 0
 
 } // namespace nodecpp
 
 
+//thread_local NodeBase* thisThreadNode = nullptr;
+
 // InterThread communication (low level)
 
-InterThreadCommData threadQueues[MAX_THREADS];
 
-static thread_local BasicThreadInfo thisThreadDescriptor;
+class InterInterThreadCommData
+{
+	static thread_local BasicThreadInfo thisThreadDescriptor;
+	ThreadCommData threadQueues[MAX_THREADS];
 
-void setThisThreadBasicInfo(BasicThreadInfo& startupData) { thisThreadDescriptor = startupData; }
+public:
+	void setThisThreadBasicInfo(BasicThreadInfo& startupData)
+	{
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupData.slotId < MAX_THREADS ); 
+		thisThreadDescriptor = startupData;
+	}
 
-//thread_local NodeBase* thisThreadNode = nullptr;
+	std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
+	{
+		return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count );
+	}
+
+	std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout )
+	{
+		return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count, timeout );
+	}
+
+	MsgQueue& getThreadQueue( size_t slotId )
+	{ 
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, slotId < MAX_THREADS ); 
+		return threadQueues[slotId].queue;
+	}
+	MsgQueue& getThisThreadQueue()
+	{
+		return threadQueues[thisThreadDescriptor.slotId].queue;
+	}
+
+	void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
+	{
+		for ( size_t slotIdx = 1; slotIdx < MAX_THREADS; ++slotIdx )
+		{
+			auto ret = threadQueues[slotIdx].acquireForReuse();
+			if ( ret.first )
+			{
+				startupData.reincarnation = ret.second;
+				startupData.slotId = slotIdx;
+				break;
+			}
+		}
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupData.slotId != BasicThreadInfo::InvalidSlotID ); 
+		startupData.defaultLog = nodecpp::logging_impl::currentLog;
+	}
+};
+thread_local BasicThreadInfo InterInterThreadCommData::thisThreadDescriptor;
+static InterInterThreadCommData threadQueues;
+
+
+void setThisThreadBasicInfo(BasicThreadInfo& startupData)
+{
+	threadQueues.setThisThreadBasicInfo(startupData);
+}
+
+MsgQueue& getThreadQueue( size_t slotId )
+{ 
+	return threadQueues.getThreadQueue(slotId);
+}
+
+MsgQueue& getThisThreadQueue( size_t slotId )
+{ 
+	return threadQueues.getThisThreadQueue();
+}
 
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
 {
-	return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count );
+	return threadQueues.popFrontFromThisThreadQueue( messages, count );
 }
 
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout )
 {
-	return threadQueues[thisThreadDescriptor.slotId].queue.pop_front( messages, count, timeout );
+	return threadQueues.popFrontFromThisThreadQueue( messages, count, timeout );
+}
+
+void runThreadTerminationCleanupRoutines()
+{
 }
 
 /*uintptr_t initInterThreadCommSystemAndGetReadHandleForMainThread()
@@ -184,18 +251,7 @@ globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>
 
 void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
 {
-	for ( size_t slotIdx = 1; slotIdx < MAX_THREADS; ++slotIdx )
-	{
-		auto ret = threadQueues[slotIdx].acquireForReuse();
-		if ( ret.first )
-		{
-			startupData.reincarnation = ret.second;
-			startupData.slotId = slotIdx;
-			break;
-		}
-	}
-	NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupData.slotId != BasicThreadInfo::InvalidSlotID ); 
-	startupData.defaultLog = nodecpp::logging_impl::currentLog;
+	threadQueues.acquireBasicThreadInfoForNewThread( startupData );
 }
 
 /*void postInfrastructuralMsg(nodecpp::Message&& msg, NodeAddress threadId )

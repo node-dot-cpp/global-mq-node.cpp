@@ -44,7 +44,7 @@ EXPORT_API ErrorCodeT getThisThreadCommMeans( void** h )
 		    acquireBasicThreadInfoForNewThread( data );
 		    size_t threadIdx = data.slotId;
 		    setThisThreadBasicInfo(data);
-		    threadLocalTransport = new ThreadCommBasicData( threadIdx, gmqueue, threadQueues[threadIdx].queue, 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
+		    threadLocalTransport = new ThreadCommBasicData( threadIdx, gmqueue, getThreadQueue(threadIdx), 0 ); // NOTE: recipientID = 0 is by default; TODO: revise
 		}
 		*h = threadLocalTransport;
 		return 0;
@@ -83,7 +83,7 @@ EXPORT_API ErrorCodeT getNextMessageSize( void* handle, int32_t* requiredBufferS
 		if(transport != threadLocalTransport)
 			return 3;
 
-		auto ptr = threadQueues[transport->threadIdx].queue.test_front();
+		auto ptr = getThreadQueue(transport->threadIdx).test_front();
 		if(ptr)
 			*requiredBufferSize = ptr->msg.size();
 
@@ -104,7 +104,7 @@ EXPORT_API ErrorCodeT getNextMessage( void* handle, uint8_t* buff, int32_t buffs
 		if(transport != threadLocalTransport)
 			return 3;
 
-		auto msg = threadQueues[transport->threadIdx].queue.pop_front();
+		auto msg = getThreadQueue(transport->threadIdx).pop_front();
 
 		if(!msg.first)
 			return 1; // shouldn't happend

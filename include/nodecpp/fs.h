@@ -68,7 +68,7 @@ namespace nodecpp::fs
 	size_t readSync( FD fd, Buffer& b, size_t offset, size_t length, std::optional<size_t> position ) { 
 		if ( position.has_value() )
 		{
-			size_t currPos = ftell( fd.fd );
+			auto currPos = ftell( fd.fd );
 			fseek( fd.fd, position.value(), SEEK_SET );
 			if ( b.capacity() < offset + length )
 				b.reserve( offset + length );
