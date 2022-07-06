@@ -253,7 +253,7 @@ public:
 		uint64_t nextTimeoutAt = nextTimeout();
 		now = infraGetCurrentTime();
 //		int timeoutToUse = getPollTimeout(nextTimeoutAt, now);
-		uint64_t timeoutToUse = nextTimeoutAt == TimeOutNever ? TimeOutNever : (nextTimeoutAt < now ? 0 : nextTimeoutAt - now);
+		uint64_t timeoutToUse = nextTimeoutAt == TimeOutNever ? TimeOutNever : (nextTimeoutAt > now ? nextTimeoutAt - now : 0);
 
 		timeoutManager = nullptr;
 		inmediateQueue = nullptr;

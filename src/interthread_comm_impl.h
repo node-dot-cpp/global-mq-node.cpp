@@ -183,10 +183,18 @@ public:
 	}
 
 	std::pair<bool, size_t> pop_front( T* messages, size_t count, uint64_t timeout ) {
+		::std::chrono::steady_clock::time_point now = ::std::chrono::steady_clock::now();
 		std::unique_lock<std::mutex> lock(mx);
 		bool expired = false;
 		while (coll.size() == 0 && !expired && !killflag) {
-			expired = waitrd.wait_for(lock, std::chrono::milliseconds(timeout)) == std::cv_status::timeout;
+			expired = waitrd.wait_for(lock, std::chrono::microseconds(timeout)) == std::cv_status::timeout;
+			if ( !expired )	{
+				uint64_t d = std::chrono::duration_cast<std::chrono::microseconds>( ::std::chrono::steady_clock::now() - now ).count();
+				if ( d < timeout )
+					timeout -= d;
+				else
+					timeout = 0;
+			}
 		}
 		if (killflag)
 		{

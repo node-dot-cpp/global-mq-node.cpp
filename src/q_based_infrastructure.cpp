@@ -53,6 +53,7 @@
 #endif
 #include <sys/resource.h>
 #endif
+#include <chrono>
 
 
 namespace nodecpp {
@@ -69,7 +70,9 @@ thread_local TimeoutManager* timeoutManager;
 uint64_t infraGetCurrentTime()
 {
 #ifdef _MSC_VER
-	return GetTickCount64() * 1000; // mks
+//	return GetTickCount64() * 1000; // mks
+	auto now = ::std::chrono::steady_clock::now();
+	return std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
 #else
     struct timespec ts;
 //    timespec_get(&ts, TIME_UTC);
@@ -125,28 +128,6 @@ namespace nodecpp {
 	{
 		inmediateQueue->add(std::move(cb));
 	}
-
-#if 0
-	namespace time
-	{
-		size_t now()
-		{
-#if defined NODECPP_MSVC || ( (defined NODECPP_WINDOWS) && (defined NODECPP_CLANG) )
-#if defined(NODECPP_X64) || defined(NODECPP_ARM64)
-			return GetTickCount64();
-#else
-			return GetTickCount();
-#endif // NODECPP_X86 or NODECPP_X64
-#elif (defined NODECPP_CLANG) || (defined NODECPP_GCC)
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (size_t)(ts.tv_nsec / 1000000) + ((uint64_t)ts.tv_sec * 1000ull);
-#else
-#error not implemented for this compiler
-#endif
-		}
-	} // namespace time
-#endif // 0
 
 } // namespace nodecpp
 
