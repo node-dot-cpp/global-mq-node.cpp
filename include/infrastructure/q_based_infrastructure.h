@@ -136,7 +136,7 @@ public:
 
 	safememory::soft_ptr<UserNodeT> getNode() { return node.node; }
 
-	int init( const globalmq::marshalling::InProcTransferrable& tdata ) {
+	int init( const globalmq::marshalling::InProcTransferrable<GMQueueStatePublisherSubscriberTypeInfo>& tdata ) {
 		node.transport.restore( tdata, gmqueue );
 		nodecpp::nodeLocalData = &(node.nls);
 
@@ -337,7 +337,7 @@ public:
 			acquireBasicThreadInfoForNewThread( data );
 		}
 	public:
-		globalmq::marshalling::InProcTransferrable transportData;
+		globalmq::marshalling::InProcTransferrable<GMQueueStatePublisherSubscriberTypeInfo> transportData;
 
 		Initializer() {}
 		Initializer( const Initializer& ) = default;
@@ -348,7 +348,7 @@ public:
 
 private:
 	BasicThreadInfo threadInfo;
-	globalmq::marshalling::InProcTransferrable transportData;
+	globalmq::marshalling::InProcTransferrable<GMQueueStatePublisherSubscriberTypeInfo> transportData;
 	bool initialized = false;
 	bool entered = false;
 

@@ -2,6 +2,7 @@
 #define NODECPP_GMQUEUE_CUSTOMIZED_TYPES_H
 
 #include <safememory/safe_ptr.h>
+#include <malloc_based_allocator.h>
 #include <marshalling.h>
 #include <internal_msg.h>
 
@@ -17,6 +18,9 @@ public:
 	// using OwningPtrT = ::safememory::owning_ptr<T>;
 	template<class T>
 	using OwningPtrT = ::std::unique_ptr<T>;
+
+	template<class T>
+	using AllocatorForGMQueueT = nodecpp::selective_allocator<nodecpp::StdRawAllocator, T>;
 
 	template<class T, class... _Types, 	std::enable_if_t<!std::is_array<T>::value, int> = 0>
 	static
