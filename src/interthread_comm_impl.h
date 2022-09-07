@@ -243,7 +243,7 @@ public:
 	}
 };
 
-enum class InterThreadMsgType { Undefined, GlobalMQ, UserDefined };
+enum class InterThreadMsgType { Undefined, GlobalMQ, Infrastructural, UserDefined };
 
 struct InterThreadMsg;
 class InterThreadMsgPtr

@@ -164,6 +164,12 @@ public:
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, slotId < MAX_THREADS ); 
 		return threadQueues[slotId].queue;
 	}
+
+	ThreadQueueID getThisThreadQueueID()
+	{
+		return ThreadQueueID( thisThreadDescriptor.slotId );
+	}
+
 	MsgQueue& getThisThreadQueue()
 	{
 		return threadQueues[thisThreadDescriptor.slotId].queue;
@@ -194,6 +200,11 @@ void setThisThreadBasicInfo(BasicThreadInfo& startupData)
 	threadQueues.setThisThreadBasicInfo(startupData);
 }
 
+ThreadQueueID getThisThreadQueueID()
+{
+	return threadQueues.getThisThreadQueueID();
+}
+
 MsgQueue& getThreadQueue( size_t slotId )
 { 
 	return threadQueues.getThreadQueue(slotId);
@@ -202,6 +213,12 @@ MsgQueue& getThreadQueue( size_t slotId )
 MsgQueue& getThisThreadQueue( size_t slotId )
 { 
 	return threadQueues.getThisThreadQueue();
+}
+
+void postInfrastructuralMessage( ThreadQueueID id, nodecpp::platform::internal_msg::InternalMsg&& msg )
+{
+	auto& queue = threadQueues.getThreadQueue( id.id );
+	queue.push_back( InterThreadMsg( std::move( msg ), InterThreadMsgType::Infrastructural ) );
 }
 
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )

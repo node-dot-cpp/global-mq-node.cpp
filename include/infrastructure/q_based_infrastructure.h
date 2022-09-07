@@ -242,6 +242,14 @@ public:
 						throw std::exception(); // unexpected / unhandled message type
 					break;
 				}
+				case InterThreadMsgType::Infrastructural:
+				{
+					if constexpr ( NodeType::has_infrastructure_message_handler )
+						node.node->onInfrastructuralMessage( thq->msg );
+					else
+						throw std::exception(); // unexpected / unhandled message type
+					break;
+				}
 				default:
 					throw std::exception(); // unexpected
 			}

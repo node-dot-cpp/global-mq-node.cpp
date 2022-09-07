@@ -137,6 +137,18 @@ public:
 	virtual ~NodeBase() {}
 };
 
+namespace nodecpp::platform::internal_msg{
+	class InternalMsg;
+}
+class ThreadQueueID
+{
+	friend void postInfrastructuralMessage( ThreadQueueID, nodecpp::platform::internal_msg::InternalMsg&& );
+	uint64_t id;
+public:
+	ThreadQueueID( uint64_t id_ ) : id( id_ ) {}
+};
+ThreadQueueID getThisThreadQueueID();
+void postInfrastructuralMessage( ThreadQueueID id, nodecpp::platform::internal_msg::InternalMsg&& msg );
 #include <gmqueue.h>
 globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>* getTransport();
 
