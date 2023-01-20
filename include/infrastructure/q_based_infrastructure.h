@@ -188,6 +188,7 @@ public:
 		::nodecpp::iibmalloc::ThreadLocalAllocatorT* formerAlloc = ::nodecpp::iibmalloc::setCurrneAllocator( &(node.allocManager) );
 #endif
 		node.node = nullptr;
+		timeout.clearForGracefulTerminaion();
 #ifdef NODECPP_THREADLOCAL_INIT_BUG_GCC_60702
 		nodecpp::net::SocketBase::DataForCommandProcessing::userHandlerClassPattern.destroy();
 		nodecpp::net::ServerBase::DataForCommandProcessing::userHandlerClassPattern.destroy();
@@ -281,6 +282,59 @@ public:
 	void run() {}
 };
 
+bool acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData );
+MsgQueue& getThreadQueue( size_t slotId );
+MsgQueue& getThisThreadQueue();
+void thisThreadHasTerminated();
+void setAllThreadsTerminating(); // Status: EXPERIMENTAL
+bool haveAllThreadsTerminated(); // Status: EXPERIMENTAL
+
+class CommThreadHandle
+{
+	friend class RaiiCommThreadHandle;
+	size_t slotId = BasicThreadInfo::InvalidSlotID;
+	uint64_t reincarnation = BasicThreadInfo::InvalidReincarnation;
+public:
+	void setTerminatingFlag();
+	CommThreadHandle( size_t slotId_, uint64_t reincarnation_ ) noexcept : slotId( slotId_ ), reincarnation( reincarnation_ ) {}
+};
+
+class RaiiCommThreadHandle : public CommThreadHandle
+{
+public:
+	RaiiCommThreadHandle( CommThreadHandle h ) : CommThreadHandle( h ) {}
+	RaiiCommThreadHandle( size_t slotId, uint64_t reincarnation ) : CommThreadHandle( slotId, reincarnation ) {}
+	RaiiCommThreadHandle( const RaiiCommThreadHandle& ) = delete;
+	RaiiCommThreadHandle& operator = ( const RaiiCommThreadHandle& ) = delete;
+	RaiiCommThreadHandle( RaiiCommThreadHandle&& other ) noexcept : CommThreadHandle( other.slotId, other.reincarnation )
+	{
+		if ( &other != this )
+		{
+			other.slotId = BasicThreadInfo::InvalidSlotID;
+			other.reincarnation = BasicThreadInfo::InvalidReincarnation;
+		}
+	}
+	RaiiCommThreadHandle& operator = ( RaiiCommThreadHandle&& other ) noexcept
+	{
+		slotId = other.slotId;
+		other.slotId = BasicThreadInfo::InvalidSlotID;
+		reincarnation = other.reincarnation;
+		other.reincarnation = BasicThreadInfo::InvalidReincarnation;
+		return *this;
+	}
+	CommThreadHandle detach()
+	{
+		CommThreadHandle ret = *this;
+		slotId = BasicThreadInfo::InvalidSlotID;
+		reincarnation = BasicThreadInfo::InvalidReincarnation;
+		return ret;
+	}
+	~RaiiCommThreadHandle()
+	{
+		setTerminatingFlag();
+	}
+};
+	
 template<class NodeT>
 class QueueBasedInfrastructure : public NodeProcessor<NodeT>
 {
@@ -300,7 +354,9 @@ public:
 		for (;;) // TODO: exit condition except kill flag at queue
 		{
 			InterThreadMsg thq[maxMsgCnt];
-			auto actualFromQueue = timeoutToUse == TimeOutNever ? popFrontFromThisThreadQueue( thq, maxMsgCnt ) : popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse / 1000 );
+			auto actualFromQueue = timeoutToUse == TimeOutNever ? popFrontFromThisThreadQueue( thq, maxMsgCnt ) : popFrontFromThisThreadQueue( thq, maxMsgCnt, timeoutToUse );
+//if ( timeoutToUse == TimeOutNever )
+//	nodecpp::log::default_log::info( nodecpp::log::ModuleID(nodecpp::nodecpp_module_id),"timeoutToUse == never, msg cnt = {}", actualFromQueue.second);
 
 			if ( actualFromQueue.first )
 			{
@@ -314,24 +370,15 @@ public:
 					timeoutToUse = NodeProcessor<NodeT>::processMessagesAndOrTimeout( nullptr );
 			}
 			else
-				break; // dtors of messages already at thq will be called here
+				break;
 		}
+	}
 
-		// pump out remaining messages
-		std::pair<bool, size_t> fromQ;
-		do
-		{
-			InterThreadMsg thq[maxMsgCnt];
-			fromQ = popFrontFromThisThreadQueue( thq, maxMsgCnt, 0 );
-			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, !fromQ.first ); // in current version it is the only exit condition and that's why we're here
-		}
-		while ( fromQ.second != 0 );
+	~QueueBasedInfrastructure()
+	{
+		thisThreadHasTerminated();
 	}
 };
-
-void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData );
-MsgQueue& getThreadQueue( size_t slotId );
-void runThreadTerminationCleanupRoutines();
 
 template<class NodeT>
 class NodeLoopBase
@@ -341,8 +388,8 @@ public:
 	{
 		BasicThreadInfo data;
 		friend class NodeLoopBase;
-		void acquire() {
-			acquireBasicThreadInfoForNewThread( data );
+		bool acquire() {
+			return acquireBasicThreadInfoForNewThread( data );
 		}
 	public:
 		globalmq::marshalling::InProcTransferrable<GMQueueStatePublisherSubscriberTypeInfo> transportData;
@@ -352,6 +399,8 @@ public:
 		Initializer& operator = ( const Initializer& ) = default;
 		Initializer( Initializer&& ) = default;
 		Initializer& operator = ( Initializer&& ) = default;
+
+		const BasicThreadInfo& getBasicThreadInfo() { return data; }
 	};
 
 private:
@@ -388,7 +437,8 @@ protected:
 		// note: startup data must be allocated using std allocator (reason: freeing memory will happen at a new thread)
 		if ( !initialized )
 		{
-			acquireBasicThreadInfoForNewThread( threadInfo );
+			bool ok = acquireBasicThreadInfoForNewThread( threadInfo );
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, ok ); 
 			initialized = true;
 		}
 		size_t threadIdx = threadInfo.slotId;

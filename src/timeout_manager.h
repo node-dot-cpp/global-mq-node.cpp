@@ -69,7 +69,7 @@ struct TimeoutEntry : public TimeoutEntryHandlerData
 class TimeoutManager
 {
 	uint64_t lastId = 0;
-	std::unordered_map<uint64_t, TimeoutEntry> timers;
+	std::unordered_map<uint64_t, TimeoutEntry, std::hash<uint64_t>, std::equal_to<uint64_t>, Mallocator<std::pair<const uint64_t, TimeoutEntry>>> timers;
 	std::multimap<uint64_t, uint64_t> nextTimeouts;
 	template<class H>
 	nodecpp::Timeout appSetTimeoutImpl(H h, int32_t ms, uint64_t now)
@@ -133,6 +133,12 @@ public:
 	bool infraRefedTimeout() const noexcept
 	{
 		return !nextTimeouts.empty();
+	}
+
+	void clearForGracefulTerminaion()
+	{
+		timers.clear();
+		nextTimeouts.clear();
 	}
 };
 

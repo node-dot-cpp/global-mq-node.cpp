@@ -137,8 +137,9 @@ namespace nodecpp {
 // InterThread communication (low level)
 
 
-class InterInterThreadCommData
+class InterThreadCommData
 {
+	std::mutex mx; // covers adding and removing threads
 	static thread_local BasicThreadInfo thisThreadDescriptor;
 	ThreadCommData threadQueues[MAX_THREADS];
 
@@ -147,6 +148,11 @@ public:
 	{
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupData.slotId < MAX_THREADS ); 
 		thisThreadDescriptor = startupData;
+	}
+
+	std::pair<bool, InterThreadMsg> popFrontFromThisThreadQueue()
+	{
+		return threadQueues[thisThreadDescriptor.slotId].queue.pop_front();
 	}
 
 	std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
@@ -175,7 +181,7 @@ public:
 		return threadQueues[thisThreadDescriptor.slotId].queue;
 	}
 
-	void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
+	void implAcquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
 	{
 		for ( size_t slotIdx = 1; slotIdx < MAX_THREADS; ++slotIdx )
 		{
@@ -190,10 +196,85 @@ public:
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupData.slotId != BasicThreadInfo::InvalidSlotID ); 
 		startupData.defaultLog = nodecpp::logging_impl::currentLog;
 	}
-};
-thread_local BasicThreadInfo InterInterThreadCommData::thisThreadDescriptor;
-static InterInterThreadCommData threadQueues;
 
+	bool acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
+	{
+		std::unique_lock<std::mutex> lock(mx);
+		if ( thisThreadDescriptor.slotId == BasicThreadInfo::InvalidSlotID )
+		{
+			implAcquireBasicThreadInfoForNewThread( startupData );
+			return true;
+		}
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, !threadQueues[thisThreadDescriptor.slotId].isUnused() ); 
+		if ( !threadQueues[thisThreadDescriptor.slotId].isTerminating() )
+		{
+			implAcquireBasicThreadInfoForNewThread( startupData );
+			return true;
+		}
+		startupData.invalidate();
+		return false;
+	}
+
+	void setTerminatingFlag( size_t slotId, uint64_t reincarnation )
+	{
+		if ( slotId != BasicThreadInfo::InvalidSlotID )
+		{
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, slotId < MAX_THREADS );
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, !threadQueues[slotId].isUnused() );
+			threadQueues[slotId].setTerminating( reincarnation );
+		}
+	}
+
+	void thisThreadHasTerminated()
+	{
+		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, threadQueues[thisThreadDescriptor.slotId].isTerminating() ); // in current version it is the only exit condition and that's why we're here
+		static constexpr size_t maxMsgCnt = 8;
+		std::pair<bool, size_t> fromQ;
+		do
+		{
+			InterThreadMsg thq[maxMsgCnt];
+			fromQ = popFrontFromThisThreadQueue( thq, maxMsgCnt, 0 );
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, !fromQ.first ); // in current version it is the only exit condition and that's why we're here
+		}
+		while ( fromQ.second != 0 );
+		threadQueues[thisThreadDescriptor.slotId].setUnused( thisThreadDescriptor.reincarnation );
+		thisThreadDescriptor.invalidate();
+	}
+
+	void setAllThreadsTerminating() // Status: EXPERIMENTAL
+	{
+		std::unique_lock<std::mutex> lock(mx);
+		for ( size_t i=0; i<MAX_THREADS; ++i )
+			if ( !threadQueues[i].isUnused() )
+				threadQueues[i].setTerminating();
+	}
+
+	bool haveAllThreadsTerminated() // Status: EXPERIMENTAL
+	{
+		std::unique_lock<std::mutex> lock(mx);
+		for ( size_t i=0; i<MAX_THREADS; ++i )
+			if ( !threadQueues[i].isUnused() )
+				return false;
+		return true;
+	}
+};
+thread_local BasicThreadInfo InterThreadCommData::thisThreadDescriptor;
+static InterThreadCommData threadQueues;
+
+void CommThreadHandle::setTerminatingFlag()
+{
+	threadQueues.setTerminatingFlag( slotId, reincarnation);
+}
+
+void setAllThreadsTerminating() // Status: EXPERIMENTAL
+{
+	threadQueues.setAllThreadsTerminating();
+}
+
+bool haveAllThreadsTerminated() // Status: EXPERIMENTAL
+{
+	return threadQueues.haveAllThreadsTerminated();
+}
 
 void setThisThreadBasicInfo(BasicThreadInfo& startupData)
 {
@@ -210,7 +291,7 @@ MsgQueue& getThreadQueue( size_t slotId )
 	return threadQueues.getThreadQueue(slotId);
 }
 
-MsgQueue& getThisThreadQueue( size_t slotId )
+MsgQueue& getThisThreadQueue()
 { 
 	return threadQueues.getThisThreadQueue();
 }
@@ -219,6 +300,11 @@ void postInfrastructuralMessage( ThreadQueueID id, nodecpp::platform::internal_m
 {
 	auto& queue = threadQueues.getThreadQueue( id.id );
 	queue.push_back( InterThreadMsg( std::move( msg ), InterThreadMsgType::Infrastructural ) );
+}
+
+std::pair<bool, InterThreadMsg> popFrontFromThisThreadQueue()
+{
+	return threadQueues.popFrontFromThisThreadQueue();
 }
 
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count )
@@ -231,14 +317,10 @@ std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, s
 	return threadQueues.popFrontFromThisThreadQueue( messages, count, timeout );
 }
 
-void runThreadTerminationCleanupRoutines()
+void thisThreadHasTerminated()
 {
+	threadQueues.thisThreadHasTerminated();
 }
-
-/*uintptr_t initInterThreadCommSystemAndGetReadHandleForMainThread()
-{
-	return interThreadCommInitializer.init();
-}*/
 
 globalmq::marshalling::GMQueue<GMQueueStatePublisherSubscriberTypeInfo> gmqueue;
 
@@ -247,9 +329,11 @@ globalmq::marshalling::GMQTransportBase<GMQueueStatePublisherSubscriberTypeInfo>
 }
 
 
-void acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
+
+
+bool acquireBasicThreadInfoForNewThread( BasicThreadInfo& startupData )
 {
-	threadQueues.acquireBasicThreadInfoForNewThread( startupData );
+	return threadQueues.acquireBasicThreadInfoForNewThread( startupData );
 }
 
 /*void postInfrastructuralMsg(nodecpp::Message&& msg, NodeAddress threadId )

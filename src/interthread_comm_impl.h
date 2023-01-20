@@ -118,6 +118,7 @@ public:
 	MWSRFixedSizeQueueWithFlowControl& operator = ( const MWSRFixedSizeQueueWithFlowControl& ) = delete;
 	MWSRFixedSizeQueueWithFlowControl( MWSRFixedSizeQueueWithFlowControl&& ) = delete;
 	MWSRFixedSizeQueueWithFlowControl& operator = ( MWSRFixedSizeQueueWithFlowControl&& ) = delete;
+	~MWSRFixedSizeQueueWithFlowControl() {}
 	void push_back(T&& it) {
 		//if the queue is full, BLOCKS until some space is freed
 		{//creating scope for lock
@@ -215,11 +216,11 @@ public:
 		return std::pair<bool, size_t>(true, sz2move);
 	}
 
-	const T* test_front() { 
+	std::pair<bool, const T*> test_front() { 
 		// NOTE: this call is provided primarily for implementing interfaces with languages (like c#) for which operations with unmanaged memory is problematic
 		// NOTE: non-nullptr remains valid until a successfull call to pop_front() is done or the whole queue is destroyed
 		std::unique_lock<std::mutex> lock(mx);
-		return coll.test_front();
+		return std::make_pair(!killflag, coll.test_front());
 	}
 
 	void kill() {
@@ -294,7 +295,7 @@ class ThreadCommData
 private:
 	std::mutex mx;
 	uint64_t reincarnation = 0; // mx-protected
-	enum Status {unused, acquired, running, terminating};
+	enum Status {unused, running, terminating};
 	Status status = unused;
 	
 public:
@@ -312,29 +313,52 @@ public:
 		std::unique_lock<std::mutex> lock(mx);
 		return std::make_pair(status != Status::terminating && status != Status::unused, reincarnation);
 	}
+	void setTerminating( uint64_t reincarnation_ ) {
+		std::unique_lock<std::mutex> lock(mx);
+		if ( reincarnation_ == reincarnation )
+		{
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, status == Status::running, "indeed: {}", status ); 
+			status = Status::terminating;
+			queue.kill();
+		}
+		else
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, false, "requested for reincarnation: {}; current reincarnation: {}", reincarnation_, reincarnation ); 
+	} 
 	void setTerminating() {
 		std::unique_lock<std::mutex> lock(mx);
 		NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, status == Status::running, "indeed: {}", status ); 
 		status = Status::terminating;
 		queue.kill();
-	}
-	bool setUnused() {
+	} 
+	bool setUnused( uint64_t reincarnation_ ) {
 		std::unique_lock<std::mutex> lock(mx);
-		if ( !queue.setReadyForReuse() )
-			return false;
-		status = Status::unused;
-		return true;
+		if ( reincarnation_ == reincarnation )
+		{
+			if ( !queue.setReadyForReuse() )
+				return false;
+			status = Status::unused;
+			return true;
+		}
+		else
+		{
+			NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, false, "requested for reincarnation: {}; current reincarnation: {}", reincarnation_, reincarnation );
+			return true;
+		}
 	}
 	std::pair<bool, uint64_t> acquireForReuse() {
 		std::unique_lock<std::mutex> lock(mx);
 		if ( status == Status::unused )
 		{
 			++reincarnation;
-			status = Status::acquired;
+			status = Status::running;
 			return std::make_pair( true, reincarnation );
 		}
 		else
 			return std::make_pair( false, (uint64_t)(-1) );
+	}
+	bool isTerminating() {
+		std::unique_lock<std::mutex> lock(mx);
+		return status == Status::terminating;
 	}
 	bool isUnused() {
 		std::unique_lock<std::mutex> lock(mx);
@@ -351,9 +375,16 @@ struct BasicThreadInfo
 	size_t slotId = InvalidSlotID;
 	uint64_t reincarnation = InvalidReincarnation;
 	nodecpp::log::Log* defaultLog = nullptr;
+	void invalidate()
+	{
+		slotId = InvalidSlotID;
+		reincarnation = InvalidReincarnation;
+		defaultLog = nullptr;
+	}
 };
 
 void setThisThreadBasicInfo(BasicThreadInfo& startupData);
+std::pair<bool, InterThreadMsg> popFrontFromThisThreadQueue();
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count );
 std::pair<bool, size_t> popFrontFromThisThreadQueue( InterThreadMsg* messages, size_t count, uint64_t timeout );
 

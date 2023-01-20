@@ -47,9 +47,13 @@ void nodeThreadMain( void* pdata )
 }
 
 template<class NodeT>
-void runNodeInAnotherThread( const char* nodeName = nullptr )
+CommThreadHandle runNodeInAnotherThread( const char* nodeName = nullptr )
 {
 	auto startupDataAndAddr = QueueBasedNodeLoop<NodeT>::getInitializer();
+	CommThreadHandle ret(startupDataAndAddr.first.getBasicThreadInfo().slotId, startupDataAndAddr.first.getBasicThreadInfo().reincarnation);
+//	NODECPP_ASSERT( nodecpp::module_id, ::nodecpp::assert::AssertLevel::critical, startupDataAndAddr.first.getBasicThreadInfo().slotId != BasicThreadInfo::InvalidSlotID ); 
+	if ( startupDataAndAddr.first.getBasicThreadInfo().slotId == BasicThreadInfo::InvalidSlotID )
+		return ret;
 	using InitializerT = typename QueueBasedNodeLoop<NodeT>::Initializer;
 	InitializerT* startupData = nodecpp::stdalloc<InitializerT>(1);
 	*startupData = startupDataAndAddr.first;
@@ -70,6 +74,7 @@ void runNodeInAnotherThread( const char* nodeName = nullptr )
 	startupData = nullptr;
 	t1.detach();
 	nodecpp::log::default_log::info( nodecpp::log::ModuleID(nodecpp::nodecpp_module_id),"...starting Listener thread with threadID = {} completed at Master thread side", threadIdx );
+	return ret;
 }
 
 template<class NodeT>
